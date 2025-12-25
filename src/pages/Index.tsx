@@ -3,7 +3,7 @@ import { ArrowLeft, Bot, FileText, Layers, ClipboardCheck } from "lucide-react";
 import Header from "@/components/Header";
 import AppSidebar from "@/components/AppSidebar";
 import AIQueueTable from "@/components/AIQueueTable";
-import AIDuplicateQueueTable from "@/components/AIDuplicateQueueTable";
+import AIDuplicateQueueEnhanced from "@/components/AIDuplicateQueueEnhanced";
 import EvaluatorTable from "@/components/EvaluatorTable";
 import ReportDetail from "@/components/ReportDetail";
 import ReportListPanel from "@/components/ReportListPanel";
@@ -174,7 +174,7 @@ const Index = () => {
 
                 {/* AI Duplicate Tab Content */}
                 <TabsContent value="ai-duplicate" className="space-y-6">
-                  <AIDuplicateQueueTable reports={aiDuplicateQueueReports} />
+                  <AIDuplicateQueueEnhanced />
                 </TabsContent>
               </Tabs>
             </div>
