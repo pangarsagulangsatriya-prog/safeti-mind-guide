@@ -710,9 +710,5 @@ const CandidateCard = ({
     </div>
   );
 };
-  if (score >= 80) return "text-destructive";
-  if (score >= 50) return "text-warning";
-  return "text-success";
-};
 
 export default DuplicateDetailDrawer;
