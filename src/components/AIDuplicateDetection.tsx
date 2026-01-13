@@ -27,9 +27,10 @@ import {
   semanticReports,
   finalReports,
   duplicateClusters,
-  auditLog,
+  auditLogs,
   getStageCounts,
-  StageStatus,
+  allDuplicateReports,
+  type StageStatus,
 } from '@/data/duplicateDetectionData';
 
 const tabs = [
@@ -46,7 +47,7 @@ const AIDuplicateDetection: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [siteFilter, setSiteFilter] = useState('all');
 
-  const stageCounts = getStageCounts();
+  const stageCounts = getStageCounts(allDuplicateReports);
 
   // Handler functions
   const handleStartAnalysis = (reportId: string) => {
@@ -270,7 +271,7 @@ const AIDuplicateDetection: React.FC = () => {
             <FinalClusterTab 
               reports={finalReports}
               clusters={duplicateClusters}
-              auditLog={auditLog}
+              auditLog={auditLogs}
               onConfirmDuplicate={handleConfirmDuplicate}
               onMarkNonDuplicate={handleMarkNonDuplicate}
               onMergeCluster={handleMergeCluster}

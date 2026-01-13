@@ -27,16 +27,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   MapPin, FileText, Brain, User, Calendar, Building2, 
-  CheckCircle2, XCircle, RefreshCw, GitMerge, ChevronDown,
+  CheckCircle2, XCircle, RefreshCw, ChevronDown,
   AlertTriangle, Loader2, ExternalLink, Image, Sparkles,
-  Clock, Info, MoreHorizontal, Layers, Scissors
+  Clock, Layers
 } from "lucide-react";
 import { DuplicateReport, DuplicateCluster, DuplicateCandidate } from "@/data/duplicateDetectionData";
 import { toast } from "sonner";
@@ -65,12 +59,6 @@ const getScoreColor = (score: number) => {
   return "text-success";
 };
 
-const getScoreBg = (score: number) => {
-  if (score >= 80) return "bg-destructive";
-  if (score >= 50) return "bg-warning";
-  return "bg-success";
-};
-
 const getRecommendationBadge = (recommendation: DuplicateReport['ai_recommendation']) => {
   switch (recommendation) {
     case 'duplicate':
@@ -81,6 +69,30 @@ const getRecommendationBadge = (recommendation: DuplicateReport['ai_recommendati
       return <Badge className="bg-success/20 text-success border-success/30">Non-Duplicate</Badge>;
   }
 };
+
+const CandidateCard = ({ candidate, isSelected, onToggle }: { 
+  candidate: DuplicateCandidate; 
+  isSelected: boolean;
+  onToggle: () => void;
+}) => (
+  <div 
+    className={`border rounded-lg p-3 cursor-pointer transition-all ${
+      isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/50'
+    }`}
+    onClick={onToggle}
+  >
+    <div className="flex items-start justify-between mb-2">
+      <span className="font-mono text-xs font-medium text-primary">{candidate.report_id}</span>
+      <div className="flex gap-1">
+        <Badge variant="outline" className="text-[10px] px-1">{candidate.geo_score}%</Badge>
+        <Badge variant="outline" className="text-[10px] px-1">{candidate.lexical_score}%</Badge>
+        <Badge variant="outline" className="text-[10px] px-1">{candidate.semantic_score}%</Badge>
+      </div>
+    </div>
+    <p className="text-xs text-muted-foreground">{candidate.reporter}</p>
+    <p className="text-xs mt-1 line-clamp-2">{candidate.deskripsi_temuan}</p>
+  </div>
+);
 
 const DuplicateDetailDrawer = ({ report, isOpen, onClose, clusters }: DuplicateDetailDrawerProps) => {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -141,13 +153,13 @@ const DuplicateDetailDrawer = ({ report, isOpen, onClose, clusters }: DuplicateD
                 <div>
                   <SheetTitle className="text-lg font-semibold flex items-center gap-2">
                     <span className="font-mono">{report.report_id}</span>
-                    {report.status === 'processing' && (
+                    {report.processing_status === 'processing' && (
                       <Badge variant="outline" className="bg-info/10 text-info border-info/30 gap-1">
                         <Loader2 className="w-3 h-3 animate-spin" />
                         Sedang Diproses
                       </Badge>
                     )}
-                    {report.status === 'error' && (
+                    {report.processing_status === 'error' && (
                       <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30 gap-1">
                         <AlertTriangle className="w-3 h-3" />
                         Error
@@ -182,7 +194,7 @@ const DuplicateDetailDrawer = ({ report, isOpen, onClose, clusters }: DuplicateD
                     <div className="grid grid-cols-2 gap-3">
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <User className="w-3.5 h-3.5" />
-                        <span className="text-foreground">{report.pelapor}</span>
+                        <span className="text-foreground">{report.reporter}</span>
                       </div>
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Calendar className="w-3.5 h-3.5" />
@@ -228,11 +240,6 @@ const DuplicateDetailDrawer = ({ report, isOpen, onClose, clusters }: DuplicateD
                       <p className="text-sm text-foreground bg-muted/30 p-3 rounded-lg">
                         {report.deskripsi_temuan}
                       </p>
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Keterangan Lokasi</p>
-                      <p className="text-sm text-foreground">{report.keterangan_lokasi}</p>
                     </div>
 
                     {/* Image */}
@@ -290,27 +297,12 @@ const DuplicateDetailDrawer = ({ report, isOpen, onClose, clusters }: DuplicateD
                                 </div>
                                 <div className="bg-muted/30 p-2 rounded">
                                   <p className="text-muted-foreground">Jarak</p>
-                                  <p>{report.geo_analysis.distance_meters ? `${report.geo_analysis.distance_meters}m` : '-'}</p>
+                                  <p>{report.geo_analysis.distance_to_cluster_center ? `${report.geo_analysis.distance_to_cluster_center}m` : '-'}</p>
                                 </div>
                               </div>
-                              <div className="flex flex-wrap gap-1">
-                                <Badge variant={report.geo_analysis.site_match ? "default" : "secondary"} className="text-xs">
-                                  Site {report.geo_analysis.site_match ? "✓" : "✗"}
-                                </Badge>
-                                <Badge variant={report.geo_analysis.lokasi_match ? "default" : "secondary"} className="text-xs">
-                                  Lokasi {report.geo_analysis.lokasi_match ? "✓" : "✗"}
-                                </Badge>
-                                <Badge variant={report.geo_analysis.detail_lokasi_match ? "default" : "secondary"} className="text-xs">
-                                  Detail {report.geo_analysis.detail_lokasi_match ? "✓" : "✗"}
-                                </Badge>
-                              </div>
                               <p className="text-xs text-muted-foreground bg-muted/20 p-2 rounded">
-                                {report.geo_analysis.reason}
+                                {report.geo_analysis.geo_reason}
                               </p>
-                              <Button variant="outline" size="sm" className="w-full text-xs">
-                                <RefreshCw className="w-3 h-3 mr-2" />
-                                Re-run Geo
-                              </Button>
                             </div>
                           ) : (
                             <div className="flex items-center gap-2 text-muted-foreground py-2">
@@ -339,31 +331,14 @@ const DuplicateDetailDrawer = ({ report, isOpen, onClose, clusters }: DuplicateD
                         <AccordionContent className="px-3 pb-3">
                           {report.lexical_analysis ? (
                             <div className="space-y-3 text-sm">
-                              <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div className="bg-muted/30 p-2 rounded">
-                                  <p className="text-muted-foreground">Overlap Deskripsi</p>
-                                  <p>{report.lexical_analysis.deskripsi_overlap_pct}%</p>
-                                </div>
-                                <div className="bg-muted/30 p-2 rounded">
-                                  <p className="text-muted-foreground">Matched Phrases</p>
-                                  <p>{report.lexical_analysis.matched_phrases.length}</p>
-                                </div>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-1">Frasa yang cocok:</p>
-                                <div className="flex flex-wrap gap-1">
-                                  {report.lexical_analysis.matched_phrases.map((phrase, i) => (
-                                    <Badge key={i} variant="secondary" className="text-xs">{phrase}</Badge>
-                                  ))}
-                                </div>
+                              <div className="flex flex-wrap gap-1">
+                                {report.lexical_analysis.matched_phrases.map((phrase, i) => (
+                                  <Badge key={i} variant="secondary" className="text-xs">{phrase}</Badge>
+                                ))}
                               </div>
                               <p className="text-xs text-muted-foreground bg-muted/20 p-2 rounded">
-                                {report.lexical_analysis.reason}
+                                {report.lexical_analysis.lexical_reason}
                               </p>
-                              <Button variant="outline" size="sm" className="w-full text-xs">
-                                <RefreshCw className="w-3 h-3 mr-2" />
-                                Re-run Lexical
-                              </Button>
                             </div>
                           ) : (
                             <div className="flex items-center gap-2 text-muted-foreground py-2">
@@ -387,51 +362,19 @@ const DuplicateDetailDrawer = ({ report, isOpen, onClose, clusters }: DuplicateD
                             }`}>
                               {report.semantic_score}%
                             </Badge>
-                            {report.semantic_analysis?.status === 'processing' && (
-                              <Loader2 className="w-3 h-3 animate-spin text-info" />
-                            )}
                           </div>
                         </AccordionTrigger>
                         <AccordionContent className="px-3 pb-3">
                           {report.semantic_analysis ? (
                             <div className="space-y-3 text-sm">
-                              <div className="flex items-center gap-2">
-                                <Badge variant={report.semantic_analysis.visual_context_match ? "default" : "secondary"} className="text-xs">
-                                  Visual Context {report.semantic_analysis.visual_context_match ? "✓" : "✗"}
-                                </Badge>
-                                <Badge variant={report.semantic_analysis.has_image ? "default" : "outline"} className="text-xs">
-                                  {report.semantic_analysis.has_image ? "Ada Gambar" : "Tanpa Gambar"}
-                                </Badge>
+                              <div className="flex flex-wrap gap-1">
+                                {report.semantic_analysis.detected_objects.map((obj, i) => (
+                                  <Badge key={i} variant="secondary" className="text-xs">{obj}</Badge>
+                                ))}
                               </div>
-                              {report.semantic_analysis.key_visual_signals.length > 0 && (
-                                <div>
-                                  <p className="text-xs text-muted-foreground mb-1">Visual Signals:</p>
-                                  <div className="flex flex-wrap gap-1">
-                                    {report.semantic_analysis.key_visual_signals.map((signal, i) => (
-                                      <Badge key={i} variant="outline" className="text-xs bg-info/10 text-info border-info/30">
-                                        {signal}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                              {report.semantic_analysis.vlm_objects_detected.length > 0 && (
-                                <div>
-                                  <p className="text-xs text-muted-foreground mb-1">VLM Objects:</p>
-                                  <div className="flex flex-wrap gap-1">
-                                    {report.semantic_analysis.vlm_objects_detected.map((obj, i) => (
-                                      <Badge key={i} variant="secondary" className="text-xs">{obj}</Badge>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
                               <p className="text-xs text-muted-foreground bg-muted/20 p-2 rounded">
-                                {report.semantic_analysis.reason}
+                                {report.semantic_analysis.semantic_reason}
                               </p>
-                              <Button variant="outline" size="sm" className="w-full text-xs">
-                                <RefreshCw className="w-3 h-3 mr-2" />
-                                Re-run Semantic
-                              </Button>
                             </div>
                           ) : (
                             <div className="flex items-center gap-2 text-muted-foreground py-2">
@@ -455,26 +398,6 @@ const DuplicateDetailDrawer = ({ report, isOpen, onClose, clusters }: DuplicateD
                     )}
                   </h3>
 
-                  {/* Cluster Info */}
-                  {cluster && (
-                    <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mb-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Cluster ID</p>
-                          <p className="font-mono text-sm font-medium text-primary">{cluster.cluster_id}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs text-muted-foreground">Anggota</p>
-                          <p className="text-sm font-medium">{cluster.member_count} laporan</p>
-                        </div>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Representative: <span className="font-mono">{cluster.representative_report_id}</span>
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Candidates List */}
                   {report.candidates.length > 0 ? (
                     <div className="space-y-3">
                       {report.candidates.map((candidate) => (
@@ -489,107 +412,35 @@ const DuplicateDetailDrawer = ({ report, isOpen, onClose, clusters }: DuplicateD
                   ) : (
                     <div className="bg-muted/20 border border-dashed border-border rounded-lg p-6 text-center">
                       <Layers className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">
-                        Tidak ditemukan kandidat duplicate
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Laporan ini kemungkinan unik
-                      </p>
+                      <p className="text-sm text-muted-foreground">Tidak ada kandidat duplicate</p>
                     </div>
                   )}
                 </div>
               </div>
             </ScrollArea>
 
-            {/* Footer - Decision Section */}
-            <div className="border-t border-border p-4 bg-card">
-              {/* AI Label */}
-              <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
-                <Info className="w-3 h-3" />
-                <span>AI adalah saran — keputusan akhir ada pada evaluator</span>
-              </div>
-
-              {/* Scores & Recommendation */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Final Score</p>
-                    <div className="flex items-center gap-2">
-                      <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full ${getScoreBg(report.duplicate_score)}`}
-                          style={{ width: `${report.duplicate_score}%` }}
-                        />
-                      </div>
-                      <span className={`text-lg font-bold ${getScoreColor(report.duplicate_score)}`}>
-                        {report.duplicate_score}%
-                      </span>
-                    </div>
-                  </div>
-                  <Separator orientation="vertical" className="h-10" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Rekomendasi AI</p>
-                    {getRecommendationBadge(report.ai_recommendation)}
-                  </div>
+            {/* Footer Actions */}
+            <div className="p-4 border-t border-border bg-muted/30">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">AI Recommendation:</span>
+                  {getRecommendationBadge(report.ai_recommendation)}
                 </div>
-
-                {/* Explanation */}
-                <div className="flex-1 ml-6">
-                  <ul className="text-xs text-muted-foreground space-y-1">
-                    {report.ai_explanation.slice(0, 2).map((exp, i) => (
-                      <li key={i} className="flex items-start gap-1">
-                        <span className="text-primary">•</span>
-                        {exp}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <span className={`text-lg font-bold ${getScoreColor(report.duplicate_score)}`}>
+                  {report.duplicate_score}%
+                </span>
               </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2">
-                <Button 
-                  onClick={handleConfirmDuplicate}
-                  className="flex-1 gap-2"
-                  disabled={report.status === 'error'}
-                >
-                  <CheckCircle2 className="w-4 h-4" />
+              <div className="flex gap-2">
+                <Button onClick={handleConfirmDuplicate} className="flex-1">
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
                   Konfirmasi Duplicate
                 </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={handleMarkNonDuplicate}
-                  className="flex-1 gap-2"
-                >
-                  <XCircle className="w-4 h-4" />
-                  Tandai Non-Duplicate
+                <Button variant="outline" onClick={handleMarkNonDuplicate}>
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Non-Duplicate
                 </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="gap-2">
-                      <MoreHorizontal className="w-4 h-4" />
-                      Kelola Cluster
-                      <ChevronDown className="w-3 h-3" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-popover border-border">
-                    <DropdownMenuItem className="gap-2">
-                      <GitMerge className="w-4 h-4" />
-                      Merge Clusters
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="gap-2">
-                      <Scissors className="w-4 h-4" />
-                      Split Cluster
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="gap-2">
-                      <Layers className="w-4 h-4" />
-                      Ubah Representative
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Button variant="secondary" onClick={handleRerun} className="gap-2">
+                <Button variant="ghost" onClick={handleRerun}>
                   <RefreshCw className="w-4 h-4" />
-                  Jalankan Ulang
                 </Button>
               </div>
             </div>
@@ -599,7 +450,7 @@ const DuplicateDetailDrawer = ({ report, isOpen, onClose, clusters }: DuplicateD
 
       {/* Confirm Dialog */}
       <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
-        <AlertDialogContent className="bg-card border-border">
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
               {confirmAction === 'confirm' && "Konfirmasi Duplicate"}
@@ -607,107 +458,23 @@ const DuplicateDetailDrawer = ({ report, isOpen, onClose, clusters }: DuplicateD
               {confirmAction === 'rerun' && "Jalankan Ulang Analisis"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmAction === 'confirm' && "Laporan ini akan digabungkan ke dalam cluster yang sama dengan kandidat yang dipilih."}
-              {confirmAction === 'reject' && "Laporan ini akan ditandai sebagai unik dan dikeluarkan dari cluster saat ini."}
-              {confirmAction === 'rerun' && "Analisis Geo → Lexical → Semantic akan dijalankan ulang. Skor dan cluster mungkin berubah."}
+              {confirmAction === 'confirm' && "Laporan akan ditandai sebagai duplicate."}
+              {confirmAction === 'reject' && "Laporan akan dipisahkan dari cluster."}
+              {confirmAction === 'rerun' && "Analisis AI akan dijalankan ulang."}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          
-          <div className="my-4">
-            <label className="text-sm font-medium">Catatan (opsional)</label>
-            <Textarea 
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Tambahkan catatan untuk audit log..."
-              className="mt-2"
-            />
-          </div>
-
+          <Textarea 
+            placeholder="Catatan (opsional)..."
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
           <AlertDialogFooter>
             <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction onClick={executeAction}>
-              {confirmAction === 'confirm' && "Konfirmasi"}
-              {confirmAction === 'reject' && "Tandai"}
-              {confirmAction === 'rerun' && "Jalankan"}
-            </AlertDialogAction>
+            <AlertDialogAction onClick={executeAction}>Konfirmasi</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
-  );
-};
-
-// Candidate Card Component
-const CandidateCard = ({ 
-  candidate, 
-  isSelected, 
-  onToggle 
-}: { 
-  candidate: DuplicateCandidate; 
-  isSelected: boolean; 
-  onToggle: () => void;
-}) => {
-  return (
-    <div 
-      onClick={onToggle}
-      className={`border rounded-lg p-3 cursor-pointer transition-all ${
-        isSelected 
-          ? 'border-primary bg-primary/5' 
-          : 'border-border hover:border-primary/50 bg-card'
-      }`}
-    >
-      <div className="flex items-start justify-between mb-2">
-        <div>
-          <p className="font-mono text-xs font-medium">{candidate.report_id}</p>
-          <p className="text-xs text-muted-foreground">{candidate.pelapor}</p>
-        </div>
-        <Badge 
-          variant="outline" 
-          className={`text-xs ${
-            candidate.overall_score >= 80 
-              ? "bg-destructive/15 text-destructive border-destructive/30" 
-              : candidate.overall_score >= 50 
-              ? "bg-warning/15 text-warning border-warning/30" 
-              : "bg-success/15 text-success border-success/30"
-          }`}
-        >
-          {candidate.overall_score}%
-        </Badge>
-      </div>
-
-      <div className="flex items-center gap-2 mb-2 text-xs">
-        <Badge variant="secondary" className="text-xs">{candidate.site}</Badge>
-        <span className="text-muted-foreground">{candidate.lokasi}</span>
-      </div>
-
-      <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-        {candidate.deskripsi_temuan}
-      </p>
-
-      <div className="flex items-center gap-3 text-xs">
-        <div className="flex items-center gap-1">
-          <MapPin className="w-3 h-3 text-primary" />
-          <span className={getScoreColor(candidate.geo_score)}>{candidate.geo_score}%</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <FileText className="w-3 h-3 text-warning" />
-          <span className={getScoreColor(candidate.lexical_score)}>{candidate.lexical_score}%</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Brain className="w-3 h-3 text-info" />
-          <span className={getScoreColor(candidate.semantic_score)}>{candidate.semantic_score}%</span>
-        </div>
-      </div>
-
-      {isSelected && (
-        <div className="mt-2 pt-2 border-t border-primary/20">
-          <div className="flex items-center gap-1 text-primary text-xs">
-            <CheckCircle2 className="w-3 h-3" />
-            Dipilih untuk konfirmasi
-          </div>
-        </div>
-      )}
-    </div>
   );
 };
 
