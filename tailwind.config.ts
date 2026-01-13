@@ -72,6 +72,19 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Stage-specific colors for AI Duplicate Detection
+        geo: {
+          DEFAULT: "hsl(var(--geo))",
+          foreground: "hsl(var(--geo-foreground))",
+        },
+        lexical: {
+          DEFAULT: "hsl(var(--lexical))",
+          foreground: "hsl(var(--lexical-foreground))",
+        },
+        semantic: {
+          DEFAULT: "hsl(var(--semantic))",
+          foreground: "hsl(var(--semantic-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

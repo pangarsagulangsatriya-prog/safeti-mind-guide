@@ -11,14 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DuplicateReport, duplicateReports, duplicateClusters } from "@/data/duplicateDetectionData";
+import { DuplicateReport, allDuplicateReports, duplicateClusters, type ProcessingStatus } from "@/data/duplicateDetectionData";
 import DuplicateDetailDrawer from "./DuplicateDetailDrawer";
 
 interface AIDuplicateQueueTableProps {
   onViewDetail?: (report: DuplicateReport) => void;
 }
 
-const getStatusBadge = (status: DuplicateReport['status']) => {
+const getStatusBadge = (status: ProcessingStatus) => {
   switch (status) {
     case "waiting":
       return (
@@ -89,17 +89,17 @@ const AIDuplicateQueueEnhanced = ({ onViewDetail }: AIDuplicateQueueTableProps) 
   const [selectedReport, setSelectedReport] = useState<DuplicateReport | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const reports = duplicateReports;
+  const reports = allDuplicateReports;
 
   const filteredReports = useMemo(() => {
     let filtered = reports.filter(report => {
       const matchesSearch = searchTerm === "" || 
         report.report_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        report.pelapor.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        report.reporter.toLowerCase().includes(searchTerm.toLowerCase()) ||
         report.lokasi.toLowerCase().includes(searchTerm.toLowerCase()) ||
         report.deskripsi_temuan.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchesStatus = statusFilter === "all" || report.status === statusFilter;
+      const matchesStatus = statusFilter === "all" || report.processing_status === statusFilter;
       const matchesSite = siteFilter === "all" || report.site === siteFilter;
       
       return matchesSearch && matchesStatus && matchesSite;
@@ -116,8 +116,8 @@ const AIDuplicateQueueEnhanced = ({ onViewDetail }: AIDuplicateQueueTableProps) 
 
     // Processing items always first
     filtered.sort((a, b) => {
-      if (a.status === "processing" && b.status !== "processing") return -1;
-      if (b.status === "processing" && a.status !== "processing") return 1;
+      if (a.processing_status === "processing" && b.processing_status !== "processing") return -1;
+      if (b.processing_status === "processing" && a.processing_status !== "processing") return 1;
       return 0;
     });
 
@@ -144,8 +144,8 @@ const AIDuplicateQueueEnhanced = ({ onViewDetail }: AIDuplicateQueueTableProps) 
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedReports = tabFilteredReports.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-  const menungguCount = reports.filter(r => r.status === "waiting").length;
-  const diprosesCount = reports.filter(r => r.status === "processing").length;
+  const menungguCount = reports.filter(r => r.processing_status === "waiting").length;
+  const diprosesCount = reports.filter(r => r.processing_status === "processing").length;
 
   const hasActiveFilters = searchTerm !== "" || statusFilter !== "all" || siteFilter !== "all";
 
@@ -389,95 +389,55 @@ const AIDuplicateQueueEnhanced = ({ onViewDetail }: AIDuplicateQueueTableProps) 
                     className="border-b border-border hover:bg-muted/30 transition-colors cursor-pointer group"
                     onClick={() => handleRowClick(report)}
                   >
-                    <td className="px-4 py-3 font-mono text-xs font-medium text-foreground whitespace-nowrap">
-                      {report.report_id}
+                    <td className="px-4 py-3">
+                      <span className="font-mono text-xs font-medium text-primary">{report.report_id}</span>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
+                    <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                       {formatTimestamp(report.timestamp)}
                     </td>
-                    <td className="px-4 py-3 text-foreground text-xs whitespace-nowrap">
-                      {report.pelapor}
-                    </td>
-                    <td className="px-4 py-3 text-xs whitespace-nowrap">
-                      <Badge variant="outline" className="text-xs font-normal">
-                        {report.site}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-foreground text-xs whitespace-nowrap max-w-[150px] truncate">
-                      {report.lokasi}
-                    </td>
+                    <td className="px-4 py-3 text-sm">{report.reporter}</td>
                     <td className="px-4 py-3">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex items-center gap-2 cursor-help">
-                            <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                              <div 
-                                className={`h-full transition-all ${getScoreBgColor(report.duplicate_score)}`}
-                                style={{ width: `${report.duplicate_score}%` }}
-                              />
-                            </div>
-                            <span className={`text-xs font-semibold min-w-[36px] ${getScoreColor(report.duplicate_score)}`}>
-                              {report.duplicate_score}%
-                            </span>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent className="bg-popover border-border max-w-[280px]">
-                          <p className="text-xs font-medium mb-1">
-                            {report.duplicate_score >= 80 
-                              ? '🔴 High Risk Duplicate' 
-                              : report.duplicate_score >= 50 
-                              ? '🟡 Potential Duplicate' 
-                              : '🟢 Low Risk'}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {report.duplicate_score >= 80 
-                              ? 'Sangat mungkin duplicate - perlu konfirmasi' 
-                              : report.duplicate_score >= 50 
-                              ? 'Mungkin duplicate - perlu review' 
-                              : 'Kemungkinan bukan duplicate'}
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <Badge variant="outline" className="text-xs">{report.site}</Badge>
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <ScoreChip score={report.geo_score} status={report.geo_analysis?.status} />
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <ScoreChip score={report.lexical_score} status={report.lexical_analysis?.status} />
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <ScoreChip score={report.semantic_score} status={report.semantic_analysis?.status} />
-                    </td>
+                    <td className="px-4 py-3 text-sm max-w-[150px] truncate">{report.lokasi}</td>
                     <td className="px-4 py-3">
-                      {getStatusBadge(report.status)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                              <Eye className="w-3.5 h-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent className="bg-popover border-border">Review</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                              <RefreshCw className="w-3.5 h-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent className="bg-popover border-border">Re-run</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-success">
-                              <XCircle className="w-3.5 h-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent className="bg-popover border-border">Mark Non-duplicate</TooltipContent>
-                        </Tooltip>
+                      <div className="flex items-center gap-2">
+                        <Progress value={report.duplicate_score} className="h-2 flex-1" />
+                        <span className={`text-xs font-medium ${getScoreColor(report.duplicate_score)}`}>
+                          {report.duplicate_score}%
+                        </span>
                       </div>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`text-xs font-medium ${getScoreColor(report.geo_score)}`}>
+                        {report.geo_score}%
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`text-xs font-medium ${getScoreColor(report.lexical_score)}`}>
+                        {report.lexical_score}%
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`text-xs font-medium ${getScoreColor(report.semantic_score)}`}>
+                        {report.semantic_score}%
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {getStatusBadge(report.processing_status)}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRowClick(report);
+                        }}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
                     </td>
                   </tr>
                 ))
@@ -487,68 +447,44 @@ const AIDuplicateQueueEnhanced = ({ onViewDetail }: AIDuplicateQueueTableProps) 
         </div>
 
         {/* Pagination */}
-        <div className="p-4 border-t border-border flex items-center justify-between bg-muted/10">
-          <p className="text-xs text-muted-foreground">
-            Menampilkan {tabFilteredReports.length > 0 ? startIndex + 1 : 0}–{Math.min(startIndex + ITEMS_PER_PAGE, tabFilteredReports.length)} dari {tabFilteredReports.length} laporan
-          </p>
-          
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="h-8 w-8 p-0"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <span className="text-sm text-muted-foreground px-3 min-w-[80px] text-center">
-              {currentPage} / {totalPages || 1}
-            </span>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages || totalPages === 0}
-              className="h-8 w-8 p-0"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
+        {totalPages > 1 && (
+          <div className="p-4 border-t border-border flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Menampilkan {startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, tabFilteredReports.length)} dari {tabFilteredReports.length} laporan
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                {currentPage} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Detail Drawer */}
-      <DuplicateDetailDrawer 
+      <DuplicateDetailDrawer
         report={selectedReport}
         isOpen={isDrawerOpen}
         onClose={handleCloseDrawer}
         clusters={duplicateClusters}
       />
     </>
-  );
-};
-
-// Score Chip Component
-const ScoreChip = ({ score, status }: { score: number; status?: string }) => {
-  if (status === "processing") {
-    return (
-      <Badge variant="outline" className="text-xs bg-muted/50 border-border gap-1">
-        <Loader2 className="w-3 h-3 animate-spin" />
-      </Badge>
-    );
-  }
-
-  const colorClass = score >= 80 
-    ? "bg-destructive/15 text-destructive border-destructive/30" 
-    : score >= 50 
-    ? "bg-warning/15 text-warning border-warning/30" 
-    : "bg-success/15 text-success border-success/30";
-
-  return (
-    <Badge variant="outline" className={`text-xs font-medium ${colorClass}`}>
-      {score}%
-    </Badge>
   );
 };
 
