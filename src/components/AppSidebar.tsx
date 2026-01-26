@@ -16,8 +16,8 @@ import {
 
 const menuItems = [
   { title: "Form Checker", url: "/form-checker", icon: ClipboardCheck },
+  { title: "Queue Monitoring", url: "/", icon: Activity },
   { title: "Dashboard Evaluator", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Monitoring", url: "/", icon: Activity },
 ];
 
 export function AppSidebar() {
