@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { 
   Copy, ClipboardCheck, Tag, 
-  Search, RefreshCw, ChevronRight, Filter, Clock,
-  Activity, ExternalLink
+  Search, RefreshCw, ChevronRight, Filter, Clock
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -27,9 +25,9 @@ import {
 } from '@/components/ui/table';
 
 const tabs = [
-  { id: 'duplicate', label: 'Duplicate Matcher', icon: Copy, color: 'text-geo', bgColor: 'bg-geo/10', actionLabel: 'Lihat Detail Duplicate', actionRoute: '/form-checker' },
-  { id: 'form', label: 'Form Checker', icon: ClipboardCheck, color: 'text-lexical', bgColor: 'bg-lexical/10', actionLabel: 'Lihat Form Checker', actionRoute: '/form-checker' },
-  { id: 'hazard', label: 'Hazard Labeling', icon: Tag, color: 'text-semantic', bgColor: 'bg-semantic/10', actionLabel: 'Lihat Hazard Labels', actionRoute: '/form-checker' },
+  { id: 'duplicate', label: 'Duplicate Matcher', icon: Copy, color: 'text-geo' },
+  { id: 'form', label: 'Form Checker', icon: ClipboardCheck, color: 'text-lexical' },
+  { id: 'hazard', label: 'Hazard Labeling', icon: Tag, color: 'text-semantic' },
 ] as const;
 
 // Mock data for the table
@@ -107,80 +105,63 @@ const AIDuplicateDetection: React.FC = () => {
     });
   };
 
-  const navigate = useNavigate();
-  const currentTab = tabs.find(t => t.id === activeTab);
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                <Activity className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">
-                  AI Queue Monitoring
-                </h1>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  Monitoring antrian pemrosesan laporan AI
-                </p>
-              </div>
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">
+                AI Processing Queue Monitor
+              </h1>
             </div>
-            <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-2">
-              <RefreshCw className="w-4 h-4" />
+            <Button variant="outline" size="sm" onClick={handleRefresh}>
+              <RefreshCw className="w-4 h-4 mr-2" />
               Refresh
             </Button>
+          </div>
+
+          {/* Info Banner */}
+          <div className="mt-4 bg-primary/5 border border-primary/20 rounded-lg px-4 py-3">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-primary">Pipeline AI memproses laporan dalam 3 tahap:</span>{' '}
+              <span className="text-geo font-medium">Duplicate Matcher</span> → 
+              <span className="text-lexical font-medium"> Form Checker</span> → 
+              <span className="text-semantic font-medium"> Hazard Labeling</span>. 
+              Setiap tahap membantu menemukan laporan duplikat, memastikan form lengkap, dan memberi label hazard secara otomatis.
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Progress Flow Indicator with Quick Actions */}
+      {/* Progress Flow Indicator */}
       <div className="border-b border-border bg-muted/30">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            {/* Stepper */}
-            <div className="flex items-center gap-2">
-              {tabs.map((tab, index) => (
-                <React.Fragment key={tab.id}>
-                  <button
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all border ${
-                      activeTab === tab.id 
-                        ? `${tab.color} ${tab.bgColor} border-current font-medium shadow-sm` 
-                        : 'text-muted-foreground hover:text-foreground border-transparent hover:bg-muted/50'
-                    }`}
-                  >
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                      activeTab === tab.id ? 'bg-foreground text-background' : 'bg-muted-foreground/20 text-muted-foreground'
-                    }`}>
-                      {index + 1}
-                    </span>
-                    <tab.icon className="w-4 h-4" />
-                    <span className="hidden sm:inline">{tab.label}</span>
-                  </button>
-                  {index < tabs.length - 1 && (
-                    <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
-                  )}
-                </React.Fragment>
-              ))}
-            </div>
-
-            {/* Quick Action Button */}
-            {currentTab && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => navigate(currentTab.actionRoute)}
-                className={`gap-2 ${currentTab.color} border-current/30 hover:${currentTab.bgColor}`}
-              >
-                <currentTab.icon className="w-4 h-4" />
-                {currentTab.actionLabel}
-                <ExternalLink className="w-3.5 h-3.5" />
-              </Button>
-            )}
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-center gap-2">
+            {tabs.map((tab, index) => (
+              <React.Fragment key={tab.id}>
+                <button
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all ${
+                    activeTab === tab.id 
+                      ? `${tab.color} bg-${tab.id === 'duplicate' ? 'geo' : tab.id === 'form' ? 'lexical' : 'semantic'}/10 font-medium` 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                    activeTab === tab.id ? 'bg-foreground text-background' : 'bg-muted'
+                  }`}>
+                    {index + 1}
+                  </span>
+                  <tab.icon className="w-4 h-4" />
+                  <span>{tab.label}</span>
+                </button>
+                {index < tabs.length - 1 && (
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                )}
+              </React.Fragment>
+            ))}
           </div>
         </div>
       </div>
