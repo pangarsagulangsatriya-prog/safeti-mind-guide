@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  Inbox, MapPin, Type, Brain, Shield, 
-  Search, RefreshCw, ChevronRight, Filter
+  Copy, ClipboardCheck, Tag, 
+  Search, RefreshCw, ChevronRight, Filter, Clock
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -15,104 +15,89 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import QueueTab from './QueueTab';
-import GeoTab from './GeoTab';
-import LexicalTab from './LexicalTab';
-import SemanticTab from './SemanticTab';
-import FinalClusterTab from './FinalClusterTab';
 import {
-  queueReports,
-  geoReports,
-  lexicalReports,
-  semanticReports,
-  finalReports,
-  duplicateClusters,
-  auditLogs,
-  getStageCounts,
-  allDuplicateReports,
-  type StageStatus,
-} from '@/data/duplicateDetectionData';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 const tabs = [
-  { id: 'queue', label: 'Queue', icon: Inbox, color: 'text-muted-foreground' },
-  { id: 'geo', label: 'Geo', icon: MapPin, color: 'text-geo' },
-  { id: 'lexical', label: 'Lexical', icon: Type, color: 'text-lexical' },
-  { id: 'semantic', label: 'Semantic', icon: Brain, color: 'text-semantic' },
-  { id: 'final', label: 'Final', icon: Shield, color: 'text-destructive' },
+  { id: 'duplicate', label: 'Duplicate Matcher', icon: Copy, color: 'text-geo' },
+  { id: 'form', label: 'Form Checker', icon: ClipboardCheck, color: 'text-lexical' },
+  { id: 'hazard', label: 'Hazard Labeling', icon: Tag, color: 'text-semantic' },
 ] as const;
 
+// Mock data for the table
+const mockReports = [
+  {
+    id: '7355231',
+    waktu: '12.28',
+    pelapor: 'MOHAMMAD ARIFIANTO',
+    site: 'MARINE',
+    lokasi: 'Floating Crane',
+    detailLokasi: 'FLF Ocean Flow',
+    ketidaksesuaian: 'External Issue',
+    subKetidaksesuaian: 'External Issue',
+    status: 'menunggu',
+  },
+  {
+    id: '5892132',
+    waktu: '12.28',
+    pelapor: 'SUL FIKRAN',
+    site: 'BMO 1',
+    lokasi: 'CPP Binungan',
+    detailLokasi: 'Area Parkir Unit & Jalan CPP Bin BC',
+    ketidaksesuaian: 'Security',
+    subKetidaksesuaian: 'Terdapat potensi ter...',
+    status: 'menunggu',
+  },
+  {
+    id: '5892133',
+    waktu: '12.28',
+    pelapor: 'SUL FIKRAN',
+    site: 'BMO 1',
+    lokasi: 'CPP Binungan',
+    detailLokasi: 'Area Parkir Unit & Jalan CPP Bin BC',
+    ketidaksesuaian: 'Security',
+    subKetidaksesuaian: 'Terdapat potensi ter...',
+    status: 'menunggu',
+  },
+  {
+    id: '5892133',
+    waktu: '12.28',
+    pelapor: 'SUL FIKRAN',
+    site: 'BMO 1',
+    lokasi: 'CPP Binungan',
+    detailLokasi: 'Area Parkir Unit & Jalan CPP Bin BC',
+    ketidaksesuaian: 'Security',
+    subKetidaksesuaian: 'Terdapat potensi ter...',
+    status: 'menunggu',
+  },
+];
+
+const StatusBadge = ({ status }: { status: string }) => {
+  return (
+    <Badge 
+      variant="outline" 
+      className="bg-warning/10 text-warning border-warning/30 font-normal gap-1.5"
+    >
+      <Clock className="w-3 h-3" />
+      Menunggu
+    </Badge>
+  );
+};
+
 const AIDuplicateDetection: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<string>('queue');
+  const [activeTab, setActiveTab] = useState<string>('duplicate');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [siteFilter, setSiteFilter] = useState('all');
-
-  const stageCounts = getStageCounts(allDuplicateReports);
-
-  // Handler functions
-  const handleStartAnalysis = (reportId: string) => {
-    toast.success(`Analisis dimulai untuk ${reportId}`, {
-      description: 'Laporan dipindahkan ke tahap Geo'
-    });
-    setActiveTab('geo');
-  };
-
-  const handleAdvanceToLexical = (reportId: string) => {
-    toast.success(`${reportId} dilanjutkan ke Lexical`, {
-      description: 'Analisis teks akan dimulai'
-    });
-    setActiveTab('lexical');
-  };
-
-  const handleExcludeFromCluster = (reportId: string) => {
-    toast.info(`${reportId} dikeluarkan dari cluster Geo`);
-  };
-
-  const handleAdvanceToSemantic = (reportId: string) => {
-    toast.success(`${reportId} dilanjutkan ke Semantic`, {
-      description: 'Analisis makna dan gambar akan dimulai'
-    });
-    setActiveTab('semantic');
-  };
-
-  const handleMarkNotSimilar = (reportId: string) => {
-    toast.info(`${reportId} ditandai tidak mirip secara teks`);
-  };
-
-  const handleSendToFinal = (reportId: string) => {
-    toast.success(`${reportId} dikirim ke Final Cluster`, {
-      description: 'Siap untuk keputusan akhir'
-    });
-    setActiveTab('final');
-  };
-
-  const handleMarkNotSameEvent = (reportId: string) => {
-    toast.info(`${reportId} ditandai bukan kejadian sama`);
-  };
-
-  const handleConfirmDuplicate = (reportId: string, notes: string) => {
-    toast.success('Duplicate dikonfirmasi', {
-      description: notes || 'Status diperbarui ke Confirmed Duplicate'
-    });
-  };
-
-  const handleMarkNonDuplicate = (reportId: string, notes: string) => {
-    toast.success('Ditandai sebagai Non-Duplicate', {
-      description: notes || 'Laporan dipisahkan dari cluster'
-    });
-  };
-
-  const handleMergeCluster = (clusterId: string, targetClusterId: string) => {
-    toast.success(`Cluster ${clusterId} digabungkan dengan ${targetClusterId}`);
-  };
-
-  const handleSplitCluster = (clusterId: string, reportIds: string[]) => {
-    toast.success(`Cluster ${clusterId} dipisah`);
-  };
-
-  const handleChangeRepresentative = (clusterId: string, newRepId: string) => {
-    toast.success(`Representative diubah ke ${newRepId}`);
-  };
+  const [lokasiFilter, setLokasiFilter] = useState('all');
+  const [ketidaksesuaianFilter, setKetidaksesuaianFilter] = useState('all');
+  const [subKetidaksesuaianFilter, setSubKetidaksesuaianFilter] = useState('all');
 
   const handleRefresh = () => {
     toast.info('Memuat ulang data...', {
@@ -128,11 +113,8 @@ const AIDuplicateDetection: React.FC = () => {
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-2xl font-bold text-foreground">
-                AI Duplicate Detection
+                AI Processing Queue Monitor
               </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                {stageCounts.queue} menunggu • {stageCounts.geo + stageCounts.lexical + stageCounts.semantic} diproses • {stageCounts.final} selesai
-              </p>
             </div>
             <Button variant="outline" size="sm" onClick={handleRefresh}>
               <RefreshCw className="w-4 h-4 mr-2" />
@@ -143,11 +125,11 @@ const AIDuplicateDetection: React.FC = () => {
           {/* Info Banner */}
           <div className="mt-4 bg-primary/5 border border-primary/20 rounded-lg px-4 py-3">
             <p className="text-sm text-muted-foreground">
-              <span className="font-medium text-primary">AI menganalisis kemiripan laporan</span> berdasarkan 
-              <span className="text-geo font-medium"> Geo</span> → 
-              <span className="text-lexical font-medium"> Lexical</span> → 
-              <span className="text-semantic font-medium"> Semantic</span>. 
-              Laporan mirip akan dikelompokkan sebagai duplicate.
+              <span className="font-medium text-primary">Pipeline AI memproses laporan dalam 3 tahap:</span>{' '}
+              <span className="text-geo font-medium">Duplicate Matcher</span> → 
+              <span className="text-lexical font-medium"> Form Checker</span> → 
+              <span className="text-semantic font-medium"> Hazard Labeling</span>. 
+              Setiap tahap membantu menemukan laporan duplikat, memastikan form lengkap, dan memberi label hazard secara otomatis.
             </p>
           </div>
         </div>
@@ -163,7 +145,7 @@ const AIDuplicateDetection: React.FC = () => {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all ${
                     activeTab === tab.id 
-                      ? `${tab.color} bg-${tab.id === 'queue' ? 'muted' : tab.id}/10 font-medium` 
+                      ? `${tab.color} bg-${tab.id === 'duplicate' ? 'geo' : tab.id === 'form' ? 'lexical' : 'semantic'}/10 font-medium` 
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -174,9 +156,6 @@ const AIDuplicateDetection: React.FC = () => {
                   </span>
                   <tab.icon className="w-4 h-4" />
                   <span>{tab.label}</span>
-                  <Badge variant="secondary" className="ml-1 text-xs">
-                    {stageCounts[tab.id as keyof typeof stageCounts]}
-                  </Badge>
                 </button>
                 {index < tabs.length - 1 && (
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
@@ -187,48 +166,91 @@ const AIDuplicateDetection: React.FC = () => {
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="border-b border-border bg-card/30 sticky top-[120px] z-10">
+      {/* Controls / Filters */}
+      <div className="border-b border-border bg-card/30">
         <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 max-w-md">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-[200px] max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Cari ID / pelapor / lokasi / kata kunci..."
+                placeholder="Cari..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
               />
             </div>
+            
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <Filter className="w-4 h-4" />
+            </div>
+
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-[120px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="confirmed">Confirmed</SelectItem>
-                <SelectItem value="non_duplicate">Non-Duplicate</SelectItem>
+                <SelectItem value="all">Status</SelectItem>
+                <SelectItem value="menunggu">Menunggu</SelectItem>
+                <SelectItem value="diproses">Diproses</SelectItem>
+                <SelectItem value="selesai">Selesai</SelectItem>
               </SelectContent>
             </Select>
+
             <Select value={siteFilter} onValueChange={setSiteFilter}>
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-[120px]">
                 <SelectValue placeholder="Site" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Site</SelectItem>
-                <SelectItem value="adaro">Site Adaro</SelectItem>
-                <SelectItem value="bharinto">Site Bharinto</SelectItem>
-                <SelectItem value="tutupan">Site Tutupan</SelectItem>
-                <SelectItem value="wara">Site Wara</SelectItem>
+                <SelectItem value="all">Site</SelectItem>
+                <SelectItem value="marine">MARINE</SelectItem>
+                <SelectItem value="bmo1">BMO 1</SelectItem>
+                <SelectItem value="bmo2">BMO 2</SelectItem>
               </SelectContent>
             </Select>
+
+            <Select value={lokasiFilter} onValueChange={setLokasiFilter}>
+              <SelectTrigger className="w-[130px]">
+                <SelectValue placeholder="Lokasi" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Lokasi</SelectItem>
+                <SelectItem value="floating">Floating Crane</SelectItem>
+                <SelectItem value="cpp">CPP Binungan</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={ketidaksesuaianFilter} onValueChange={setKetidaksesuaianFilter}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Ketidaksesuaian" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Ketidaksesuaian</SelectItem>
+                <SelectItem value="external">External Issue</SelectItem>
+                <SelectItem value="security">Security</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={subKetidaksesuaianFilter} onValueChange={setSubKetidaksesuaianFilter}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Sub-Ketidakses..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Sub-Ketidaksesuaian</SelectItem>
+                <SelectItem value="external">External Issue</SelectItem>
+                <SelectItem value="potensi">Terdapat potensi</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button variant="ghost" size="sm" className="text-muted-foreground gap-1.5">
+              <RefreshCw className="w-3.5 h-3.5" />
+              Terlama
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-6">
+      {/* Main Content - Table */}
+      <div className="container mx-auto px-4 py-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="hidden">
             {tabs.map(tab => (
@@ -236,48 +258,128 @@ const AIDuplicateDetection: React.FC = () => {
             ))}
           </TabsList>
 
-          <TabsContent value="queue" className="mt-0">
-            <QueueTab 
-              reports={queueReports}
-              onStartAnalysis={handleStartAnalysis}
-            />
+          <TabsContent value="duplicate" className="mt-0">
+            <div className="rounded-lg border border-border bg-card overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30">
+                    <TableHead className="font-semibold text-foreground">ID</TableHead>
+                    <TableHead className="font-semibold text-foreground">Waktu</TableHead>
+                    <TableHead className="font-semibold text-foreground">Pelapor</TableHead>
+                    <TableHead className="font-semibold text-foreground">Site</TableHead>
+                    <TableHead className="font-semibold text-foreground">Lokasi</TableHead>
+                    <TableHead className="font-semibold text-foreground">Detail Lokasi</TableHead>
+                    <TableHead className="font-semibold text-foreground">Ketidaksesuaian</TableHead>
+                    <TableHead className="font-semibold text-foreground">Sub-Ketidaksesuaian</TableHead>
+                    <TableHead className="font-semibold text-foreground">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {mockReports.map((report, index) => (
+                    <TableRow key={`${report.id}-${index}`} className="hover:bg-muted/20">
+                      <TableCell className="font-mono font-medium text-primary">{report.id}</TableCell>
+                      <TableCell className="text-muted-foreground">{report.waktu}</TableCell>
+                      <TableCell className="font-medium text-geo">{report.pelapor}</TableCell>
+                      <TableCell>{report.site}</TableCell>
+                      <TableCell className="text-primary">{report.lokasi}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">{report.detailLokasi}</TableCell>
+                      <TableCell className="text-muted-foreground">{report.ketidaksesuaian}</TableCell>
+                      <TableCell className="text-muted-foreground max-w-[150px] truncate">{report.subKetidaksesuaian}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={report.status} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              
+              {/* Pagination info */}
+              <div className="px-4 py-3 border-t border-border text-sm text-muted-foreground">
+                1-4 dari 4
+              </div>
+            </div>
           </TabsContent>
 
-          <TabsContent value="geo" className="mt-0">
-            <GeoTab 
-              reports={geoReports}
-              onAdvanceToLexical={handleAdvanceToLexical}
-              onExcludeFromCluster={handleExcludeFromCluster}
-            />
+          <TabsContent value="form" className="mt-0">
+            <div className="rounded-lg border border-border bg-card overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30">
+                    <TableHead className="font-semibold text-foreground">ID</TableHead>
+                    <TableHead className="font-semibold text-foreground">Waktu</TableHead>
+                    <TableHead className="font-semibold text-foreground">Pelapor</TableHead>
+                    <TableHead className="font-semibold text-foreground">Site</TableHead>
+                    <TableHead className="font-semibold text-foreground">Lokasi</TableHead>
+                    <TableHead className="font-semibold text-foreground">Detail Lokasi</TableHead>
+                    <TableHead className="font-semibold text-foreground">Ketidaksesuaian</TableHead>
+                    <TableHead className="font-semibold text-foreground">Sub-Ketidaksesuaian</TableHead>
+                    <TableHead className="font-semibold text-foreground">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {mockReports.map((report, index) => (
+                    <TableRow key={`${report.id}-${index}`} className="hover:bg-muted/20">
+                      <TableCell className="font-mono font-medium text-primary">{report.id}</TableCell>
+                      <TableCell className="text-muted-foreground">{report.waktu}</TableCell>
+                      <TableCell className="font-medium text-geo">{report.pelapor}</TableCell>
+                      <TableCell>{report.site}</TableCell>
+                      <TableCell className="text-primary">{report.lokasi}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">{report.detailLokasi}</TableCell>
+                      <TableCell className="text-muted-foreground">{report.ketidaksesuaian}</TableCell>
+                      <TableCell className="text-muted-foreground max-w-[150px] truncate">{report.subKetidaksesuaian}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={report.status} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              
+              <div className="px-4 py-3 border-t border-border text-sm text-muted-foreground">
+                1-4 dari 4
+              </div>
+            </div>
           </TabsContent>
 
-          <TabsContent value="lexical" className="mt-0">
-            <LexicalTab 
-              reports={lexicalReports}
-              onAdvanceToSemantic={handleAdvanceToSemantic}
-              onMarkNotSimilar={handleMarkNotSimilar}
-            />
-          </TabsContent>
-
-          <TabsContent value="semantic" className="mt-0">
-            <SemanticTab 
-              reports={semanticReports}
-              onSendToFinal={handleSendToFinal}
-              onMarkNotSameEvent={handleMarkNotSameEvent}
-            />
-          </TabsContent>
-
-          <TabsContent value="final" className="mt-0">
-            <FinalClusterTab 
-              reports={finalReports}
-              clusters={duplicateClusters}
-              auditLog={auditLogs}
-              onConfirmDuplicate={handleConfirmDuplicate}
-              onMarkNonDuplicate={handleMarkNonDuplicate}
-              onMergeCluster={handleMergeCluster}
-              onSplitCluster={handleSplitCluster}
-              onChangeRepresentative={handleChangeRepresentative}
-            />
+          <TabsContent value="hazard" className="mt-0">
+            <div className="rounded-lg border border-border bg-card overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30">
+                    <TableHead className="font-semibold text-foreground">ID</TableHead>
+                    <TableHead className="font-semibold text-foreground">Waktu</TableHead>
+                    <TableHead className="font-semibold text-foreground">Pelapor</TableHead>
+                    <TableHead className="font-semibold text-foreground">Site</TableHead>
+                    <TableHead className="font-semibold text-foreground">Lokasi</TableHead>
+                    <TableHead className="font-semibold text-foreground">Detail Lokasi</TableHead>
+                    <TableHead className="font-semibold text-foreground">Ketidaksesuaian</TableHead>
+                    <TableHead className="font-semibold text-foreground">Sub-Ketidaksesuaian</TableHead>
+                    <TableHead className="font-semibold text-foreground">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {mockReports.map((report, index) => (
+                    <TableRow key={`${report.id}-${index}`} className="hover:bg-muted/20">
+                      <TableCell className="font-mono font-medium text-primary">{report.id}</TableCell>
+                      <TableCell className="text-muted-foreground">{report.waktu}</TableCell>
+                      <TableCell className="font-medium text-geo">{report.pelapor}</TableCell>
+                      <TableCell>{report.site}</TableCell>
+                      <TableCell className="text-primary">{report.lokasi}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">{report.detailLokasi}</TableCell>
+                      <TableCell className="text-muted-foreground">{report.ketidaksesuaian}</TableCell>
+                      <TableCell className="text-muted-foreground max-w-[150px] truncate">{report.subKetidaksesuaian}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={report.status} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              
+              <div className="px-4 py-3 border-t border-border text-sm text-muted-foreground">
+                1-4 dari 4
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
