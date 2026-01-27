@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { 
   Copy, ClipboardCheck, Tag, 
   Search, RefreshCw, ChevronRight, Filter, Clock,
-  Bot, ExternalLink, Timer
+  Bot, ExternalLink, Timer, MoreHorizontal, MapPin, Type, Sparkles, CheckCircle2
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -31,6 +32,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useNavigate } from 'react-router-dom';
+import PipelineStatusCards from './PipelineStatusCards';
 
 const tabs = [
   { id: 'duplicate', label: 'Duplicate Matcher', icon: Copy, color: 'text-geo' },
@@ -59,63 +61,130 @@ const tabConfig = {
   },
 };
 
-// Mock data for the table
+// Mock data for the table - matching the reference UI
 const mockReports = [
   {
-    id: '7355231',
-    waktu: '12.28',
-    pelapor: 'MOHAMMAD ARIFIANTO',
+    id: '8060386',
+    timestamp: '19 Jan, 08:05',
+    pelapor: 'SUWARNO',
+    site: 'LMO',
+    lokasi: 'Workshop Bigshop BUMA',
+    geoCheck: true,
+    textCheck: true,
+    semanticCheck: true,
+    status: 'menunggu',
+    duplicateScore: 45,
+    duplicateStatus: null,
+  },
+  {
+    id: '8060385',
+    timestamp: '19 Jan, 08:05',
+    pelapor: 'FIRMAN',
     site: 'MARINE',
-    lokasi: 'Floating Crane',
-    detailLokasi: 'FLF Ocean Flow',
-    ketidaksesuaian: 'External Issue',
-    subKetidaksesuaian: 'External Issue',
+    lokasi: 'Towing Tug',
+    geoCheck: true,
+    textCheck: true,
+    semanticCheck: true,
     status: 'menunggu',
+    duplicateScore: 35,
+    duplicateStatus: null,
   },
   {
-    id: '5892132',
-    waktu: '12.28',
-    pelapor: 'SUL FIKRAN',
-    site: 'BMO 1',
-    lokasi: 'CPP Binungan',
-    detailLokasi: 'Area Parkir Unit & Jalan CPP Bin BC',
-    ketidaksesuaian: 'Security',
-    subKetidaksesuaian: 'Terdapat potensi ter...',
-    status: 'menunggu',
+    id: '8060379',
+    timestamp: '19 Jan, 08:05',
+    pelapor: 'IRFAN NUR RIZAL',
+    site: 'GMO',
+    lokasi: 'Crusher 01 dan BLC',
+    geoCheck: true,
+    textCheck: true,
+    semanticCheck: true,
+    status: 'diproses',
+    duplicateScore: 60,
+    duplicateStatus: null,
   },
   {
-    id: '5892133',
-    waktu: '12.28',
-    pelapor: 'SUL FIKRAN',
+    id: '8060378',
+    timestamp: '19 Jan, 08:05',
+    pelapor: 'ABDAN SYEKURA',
     site: 'BMO 1',
-    lokasi: 'CPP Binungan',
-    detailLokasi: 'Area Parkir Unit & Jalan CPP Bin BC',
-    ketidaksesuaian: 'Security',
-    subKetidaksesuaian: 'Terdapat potensi ter...',
-    status: 'menunggu',
+    lokasi: 'Fuel Station',
+    geoCheck: true,
+    textCheck: true,
+    semanticCheck: true,
+    status: 'diproses',
+    duplicateScore: 55,
+    duplicateStatus: null,
   },
   {
-    id: '5892134',
-    waktu: '12.28',
-    pelapor: 'SUL FIKRAN',
-    site: 'BMO 1',
-    lokasi: 'CPP Binungan',
-    detailLokasi: 'Area Parkir Unit & Jalan CPP Bin BC',
-    ketidaksesuaian: 'Security',
-    subKetidaksesuaian: 'Terdapat potensi ter...',
-    status: 'menunggu',
+    id: '8060377',
+    timestamp: '19 Jan, 08:05',
+    pelapor: 'INDRA WIRA PRANATA',
+    site: 'BMO 2',
+    lokasi: '(B8) Pit J',
+    geoCheck: true,
+    textCheck: true,
+    semanticCheck: true,
+    status: 'diproses',
+    duplicateScore: 50,
+    duplicateStatus: null,
+  },
+  {
+    id: '8060373',
+    timestamp: '19 Jan, 08:05',
+    pelapor: 'FIRMAN',
+    site: 'MARINE',
+    lokasi: 'Towing Tug',
+    geoCheck: true,
+    textCheck: true,
+    semanticCheck: true,
+    status: 'diproses',
+    duplicateScore: 40,
+    duplicateStatus: null,
   },
 ];
 
+// Mock pipeline stats for each tab
+const pipelineStats = {
+  duplicate: { menunggu: 2, diproses: 4, selesai: 12, gagal: 0 },
+  form: { menunggu: 5, diproses: 3, selesai: 8, gagal: 1 },
+  hazard: { menunggu: 3, diproses: 2, selesai: 10, gagal: 0 },
+};
+
 const StatusBadge = ({ status }: { status: string }) => {
+  if (status === 'menunggu') {
+    return (
+      <Badge 
+        variant="outline" 
+        className="bg-warning/10 text-warning border-warning/30 font-normal gap-1.5"
+      >
+        <Clock className="w-3 h-3" />
+        Menunggu
+      </Badge>
+    );
+  }
+  
   return (
     <Badge 
       variant="outline" 
-      className="bg-warning/10 text-warning border-warning/30 font-normal gap-1.5"
+      className="bg-info/10 text-info border-info/30 font-normal gap-1.5"
     >
-      <Clock className="w-3 h-3" />
-      Menunggu
+      <RefreshCw className="w-3 h-3 animate-spin" />
+      Diproses
     </Badge>
+  );
+};
+
+const CheckIcon = ({ checked, type }: { checked: boolean; type: 'geo' | 'text' | 'semantic' }) => {
+  const colorClass = type === 'geo' ? 'text-geo' : type === 'text' ? 'text-lexical' : 'text-semantic';
+  
+  return (
+    <div className={`w-5 h-5 rounded-full flex items-center justify-center ${checked ? `bg-${type === 'geo' ? 'geo' : type === 'text' ? 'lexical' : 'semantic'}/10` : 'bg-muted'}`}>
+      {checked ? (
+        <CheckCircle2 className={`w-4 h-4 ${colorClass}`} />
+      ) : (
+        <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+      )}
+    </div>
   );
 };
 
@@ -126,12 +195,17 @@ const AIDuplicateDetection: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [siteFilter, setSiteFilter] = useState('all');
   const [lokasiFilter, setLokasiFilter] = useState('all');
-  const [ketidaksesuaianFilter, setKetidaksesuaianFilter] = useState('all');
-  const [subKetidaksesuaianFilter, setSubKetidaksesuaianFilter] = useState('all');
   
   // Time window countdown state
   const [timeRemaining, setTimeRemaining] = useState(3 * 60 * 60); // 3 hours in seconds
   const [lastUpdated] = useState(new Date());
+
+  // Current execution date (for Form Checker and Hazard Labeling)
+  const executionDate = new Date().toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -169,9 +243,17 @@ const AIDuplicateDetection: React.FC = () => {
   };
 
   const currentConfig = tabConfig[activeTab as keyof typeof tabConfig];
+  const currentStats = pipelineStats[activeTab as keyof typeof pipelineStats];
 
   const handleQuickAction = () => {
     navigate(currentConfig.navigateTo);
+  };
+
+  const handleStatusCardClick = (status: string) => {
+    setStatusFilter(status);
+    toast.info(`Filter: ${status}`, {
+      description: `Menampilkan laporan dengan status ${status}`
+    });
   };
 
   const renderTable = () => (
@@ -180,29 +262,77 @@ const AIDuplicateDetection: React.FC = () => {
         <TableHeader>
           <TableRow className="bg-muted/30">
             <TableHead className="font-semibold text-foreground">ID</TableHead>
-            <TableHead className="font-semibold text-foreground">Waktu</TableHead>
+            <TableHead className="font-semibold text-foreground">Timestamp</TableHead>
             <TableHead className="font-semibold text-foreground">Pelapor</TableHead>
             <TableHead className="font-semibold text-foreground">Site</TableHead>
             <TableHead className="font-semibold text-foreground">Lokasi</TableHead>
-            <TableHead className="font-semibold text-foreground">Detail Lokasi</TableHead>
-            <TableHead className="font-semibold text-foreground">Ketidaksesuaian</TableHead>
-            <TableHead className="font-semibold text-foreground">Sub-Ketidaksesuaian</TableHead>
+            <TableHead className="font-semibold text-foreground text-center">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <MapPin className="w-4 h-4 text-geo mx-auto" />
+                  </TooltipTrigger>
+                  <TooltipContent>Geo Check</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </TableHead>
+            <TableHead className="font-semibold text-foreground text-center">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Type className="w-4 h-4 text-lexical mx-auto" />
+                  </TooltipTrigger>
+                  <TooltipContent>Text Check</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </TableHead>
+            <TableHead className="font-semibold text-foreground text-center">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Sparkles className="w-4 h-4 text-semantic mx-auto" />
+                  </TooltipTrigger>
+                  <TooltipContent>Semantic Check</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </TableHead>
             <TableHead className="font-semibold text-foreground">Status</TableHead>
+            <TableHead className="font-semibold text-foreground">Duplicate Score</TableHead>
+            <TableHead className="font-semibold text-foreground">Duplicate Status</TableHead>
+            <TableHead className="font-semibold text-foreground">Aksi</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {mockReports.map((report, index) => (
             <TableRow key={`${report.id}-${index}`} className="hover:bg-muted/20">
-              <TableCell className="font-mono font-medium text-primary">{report.id}</TableCell>
-              <TableCell className="text-muted-foreground">{report.waktu}</TableCell>
+              <TableCell className="font-mono font-semibold text-primary">{report.id}</TableCell>
+              <TableCell className="text-muted-foreground">{report.timestamp}</TableCell>
               <TableCell className="font-medium text-geo">{report.pelapor}</TableCell>
-              <TableCell>{report.site}</TableCell>
+              <TableCell className="text-muted-foreground">{report.site}</TableCell>
               <TableCell className="text-primary">{report.lokasi}</TableCell>
-              <TableCell className="max-w-[200px] truncate">{report.detailLokasi}</TableCell>
-              <TableCell className="text-muted-foreground">{report.ketidaksesuaian}</TableCell>
-              <TableCell className="text-muted-foreground max-w-[150px] truncate">{report.subKetidaksesuaian}</TableCell>
+              <TableCell className="text-center">
+                <CheckIcon checked={report.geoCheck} type="geo" />
+              </TableCell>
+              <TableCell className="text-center">
+                <CheckIcon checked={report.textCheck} type="text" />
+              </TableCell>
+              <TableCell className="text-center">
+                <CheckIcon checked={report.semanticCheck} type="semantic" />
+              </TableCell>
               <TableCell>
                 <StatusBadge status={report.status} />
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2 min-w-[100px]">
+                  <Progress value={report.duplicateScore} className="h-1.5 flex-1" />
+                  <span className="text-xs text-muted-foreground">Processing...</span>
+                </div>
+              </TableCell>
+              <TableCell className="text-muted-foreground">—</TableCell>
+              <TableCell>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreHorizontal className="w-4 h-4" />
+                </Button>
               </TableCell>
             </TableRow>
           ))}
@@ -210,7 +340,7 @@ const AIDuplicateDetection: React.FC = () => {
       </Table>
       
       <div className="px-4 py-3 border-t border-border text-sm text-muted-foreground">
-        1-4 dari 4
+        1-{mockReports.length} dari {mockReports.length}
       </div>
     </div>
   );
@@ -280,7 +410,7 @@ const AIDuplicateDetection: React.FC = () => {
             <div className="relative flex-1 min-w-[200px] max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Cari..."
+                placeholder="Cari ID / Pelapor..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -290,6 +420,33 @@ const AIDuplicateDetection: React.FC = () => {
             <div className="flex items-center gap-1 text-muted-foreground">
               <Filter className="w-4 h-4" />
             </div>
+
+            <Select value={siteFilter} onValueChange={setSiteFilter}>
+              <SelectTrigger className="w-[130px]">
+                <SelectValue placeholder="Semua Site" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Site</SelectItem>
+                <SelectItem value="marine">MARINE</SelectItem>
+                <SelectItem value="lmo">LMO</SelectItem>
+                <SelectItem value="gmo">GMO</SelectItem>
+                <SelectItem value="bmo1">BMO 1</SelectItem>
+                <SelectItem value="bmo2">BMO 2</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={lokasiFilter} onValueChange={setLokasiFilter}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Semua Lokasi" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Lokasi</SelectItem>
+                <SelectItem value="workshop">Workshop</SelectItem>
+                <SelectItem value="towing">Towing Tug</SelectItem>
+                <SelectItem value="crusher">Crusher</SelectItem>
+                <SelectItem value="fuel">Fuel Station</SelectItem>
+              </SelectContent>
+            </Select>
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[120px]">
@@ -303,54 +460,9 @@ const AIDuplicateDetection: React.FC = () => {
               </SelectContent>
             </Select>
 
-            <Select value={siteFilter} onValueChange={setSiteFilter}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Site" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Site</SelectItem>
-                <SelectItem value="marine">MARINE</SelectItem>
-                <SelectItem value="bmo1">BMO 1</SelectItem>
-                <SelectItem value="bmo2">BMO 2</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={lokasiFilter} onValueChange={setLokasiFilter}>
-              <SelectTrigger className="w-[130px]">
-                <SelectValue placeholder="Lokasi" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Lokasi</SelectItem>
-                <SelectItem value="floating">Floating Crane</SelectItem>
-                <SelectItem value="cpp">CPP Binungan</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={ketidaksesuaianFilter} onValueChange={setKetidaksesuaianFilter}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Ketidaksesuaian" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Ketidaksesuaian</SelectItem>
-                <SelectItem value="external">External Issue</SelectItem>
-                <SelectItem value="security">Security</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={subKetidaksesuaianFilter} onValueChange={setSubKetidaksesuaianFilter}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Sub-Ketidakses..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Sub-Ketidaksesuaian</SelectItem>
-                <SelectItem value="external">External Issue</SelectItem>
-                <SelectItem value="potensi">Terdapat potensi</SelectItem>
-              </SelectContent>
-            </Select>
-
             <Button variant="ghost" size="sm" className="text-muted-foreground gap-1.5">
               <RefreshCw className="w-3.5 h-3.5" />
-              Terlama
+              Sort
             </Button>
           </div>
         </div>
@@ -395,20 +507,50 @@ const AIDuplicateDetection: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Execution Info - For Form Checker */}
+              {activeTab === 'form' && (
+                <div className="mt-3 space-y-1.5">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-lexical/10 rounded-lg border border-lexical/20 w-fit">
+                    <ClipboardCheck className="w-4 h-4 text-lexical" />
+                    <span className="text-sm font-medium text-lexical">
+                      Sedang mengeksekusi form check pada tanggal: {executionDate}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground pl-1">
+                    Hazard yang dianalisis adalah hazard yang tidak termasuk duplicate
+                  </p>
+                </div>
+              )}
+
+              {/* Execution Info - For Hazard Labeling */}
+              {activeTab === 'hazard' && (
+                <div className="mt-3 space-y-1.5">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-semantic/10 rounded-lg border border-semantic/20 w-fit">
+                    <Tag className="w-4 h-4 text-semantic" />
+                    <span className="text-sm font-medium text-semantic">
+                      Sedang memberi label hazard pada tanggal: {executionDate}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground pl-1">
+                    Proses dilakukan setelah Form Checker selesai
+                  </p>
+                </div>
+              )}
             </div>
             
-            {/* Quick Action Button */}
+            {/* Quick Action Button - Subtle styling */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button 
-                    variant="default" 
+                    variant="ghost" 
                     size="sm"
                     onClick={handleQuickAction}
-                    className="gap-2"
+                    className="gap-1.5 text-muted-foreground hover:text-foreground"
                   >
-                    <ExternalLink className="w-4 h-4" />
-                    {currentConfig.buttonLabel}
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span className="text-xs">{currentConfig.buttonLabel}</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -417,6 +559,14 @@ const AIDuplicateDetection: React.FC = () => {
               </Tooltip>
             </TooltipProvider>
           </div>
+        </div>
+
+        {/* Pipeline Status Cards */}
+        <div className="mb-4">
+          <PipelineStatusCards 
+            stats={currentStats} 
+            onStatusClick={handleStatusCardClick} 
+          />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
