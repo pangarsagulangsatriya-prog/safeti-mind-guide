@@ -9,7 +9,7 @@ import {
 import { cn } from '@/lib/utils';
 
 interface StatusCardProps {
-  status: 'menunggu' | 'diproses' | 'selesai' | 'gagal';
+  status: 'menunggu' | 'diproses' | 'berhasil' | 'gagal';
   count: number;
   onClick?: () => void;
 }
@@ -20,40 +20,28 @@ const statusConfig = {
     subtitle: 'Belum masuk proses',
     tooltip: 'Laporan sudah masuk antrian dan menunggu eksekusi tahap berikutnya.',
     icon: Clock,
-    bgColor: 'bg-warning/10',
-    borderColor: 'border-warning/30',
-    textColor: 'text-warning',
-    iconBg: 'bg-warning/20',
+    filterValue: 'menunggu',
   },
   diproses: {
     label: 'Diproses',
     subtitle: 'Sedang berjalan',
     tooltip: 'Laporan sedang diproses oleh AI engine pada tahap ini.',
     icon: Loader2,
-    bgColor: 'bg-info/10',
-    borderColor: 'border-info/30',
-    textColor: 'text-info',
-    iconBg: 'bg-info/20',
+    filterValue: 'diproses',
   },
-  selesai: {
-    label: 'Selesai',
+  berhasil: {
+    label: 'Berhasil',
     subtitle: 'Siap dievaluasi',
     tooltip: 'Pemrosesan selesai dan hasil siap masuk tahap berikutnya / siap dievaluasi.',
     icon: CheckCircle2,
-    bgColor: 'bg-success/10',
-    borderColor: 'border-success/30',
-    textColor: 'text-success',
-    iconBg: 'bg-success/20',
+    filterValue: 'sukses',
   },
   gagal: {
-    label: 'Butuh Pengecekan',
-    subtitle: 'Gagal / Stuck / Error',
-    tooltip: 'Proses gagal, tersangkut, atau butuh pengecekan. Silakan retry atau cek log.',
+    label: 'Gagal',
+    subtitle: 'Butuh pengecekan',
+    tooltip: 'Proses gagal. Silakan cek log atau lakukan tindakan perbaikan.',
     icon: AlertCircle,
-    bgColor: 'bg-destructive/10',
-    borderColor: 'border-destructive/30',
-    textColor: 'text-destructive',
-    iconBg: 'bg-destructive/20',
+    filterValue: 'gagal',
   },
 };
 
@@ -68,23 +56,22 @@ const StatusCard: React.FC<StatusCardProps> = ({ status, count, onClick }) => {
           <button
             onClick={onClick}
             className={cn(
-              'flex items-center gap-3 px-4 py-3 rounded-lg border transition-all cursor-pointer',
-              'hover:shadow-sm hover:scale-[1.02]',
-              config.bgColor,
-              config.borderColor
+              'flex items-center gap-3 px-4 py-3 rounded-lg border border-border bg-card transition-all cursor-pointer',
+              'hover:shadow-sm hover:bg-muted/50'
             )}
           >
-            <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', config.iconBg)}>
-              <Icon className={cn('w-4 h-4', config.textColor, status === 'diproses' && 'animate-spin')} />
+            <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+              <Icon className={cn('w-4 h-4 text-muted-foreground', status === 'diproses' && 'animate-spin')} />
             </div>
             <div className="text-left">
-              <div className={cn('text-xl font-bold', config.textColor)}>{count}</div>
+              <div className="text-xl font-bold text-foreground">{count}</div>
               <div className="text-xs text-muted-foreground">{config.subtitle}</div>
             </div>
           </button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-[200px]">
-          <p className="text-sm">{config.tooltip}</p>
+          <p className="text-xs font-medium mb-0.5">{config.label}</p>
+          <p className="text-xs text-muted-foreground">{config.tooltip}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -95,7 +82,7 @@ interface PipelineStatusCardsProps {
   stats: {
     menunggu: number;
     diproses: number;
-    selesai: number;
+    berhasil: number;
     gagal: number;
   };
   onStatusClick?: (status: string) => void;
@@ -104,10 +91,10 @@ interface PipelineStatusCardsProps {
 const PipelineStatusCards: React.FC<PipelineStatusCardsProps> = ({ stats, onStatusClick }) => {
   return (
     <div className="flex items-center gap-3 flex-wrap">
-      <StatusCard status="menunggu" count={stats.menunggu} onClick={() => onStatusClick?.('menunggu')} />
-      <StatusCard status="diproses" count={stats.diproses} onClick={() => onStatusClick?.('diproses')} />
-      <StatusCard status="selesai" count={stats.selesai} onClick={() => onStatusClick?.('selesai')} />
-      <StatusCard status="gagal" count={stats.gagal} onClick={() => onStatusClick?.('gagal')} />
+      <StatusCard status="menunggu" count={stats.menunggu} onClick={() => onStatusClick?.(statusConfig.menunggu.filterValue)} />
+      <StatusCard status="diproses" count={stats.diproses} onClick={() => onStatusClick?.(statusConfig.diproses.filterValue)} />
+      <StatusCard status="berhasil" count={stats.berhasil} onClick={() => onStatusClick?.(statusConfig.berhasil.filterValue)} />
+      <StatusCard status="gagal" count={stats.gagal} onClick={() => onStatusClick?.(statusConfig.gagal.filterValue)} />
     </div>
   );
 };
