@@ -601,7 +601,7 @@ const AIDuplicateDetection: React.FC = () => {
         </div>
 
         {/* Jadwal Batch - TOP of content area */}
-        {activeTab === 'duplicate' && (
+        {/* Jadwal Batch - TOP of content area */}
           <div className="mb-4 rounded-lg border border-border bg-card p-3.5">
             <div className="flex items-center gap-3 flex-wrap">
               {/* Date Filter - Airbnb style dropdown */}
@@ -654,27 +654,6 @@ const AIDuplicateDetection: React.FC = () => {
               </div>
             </div>
           </div>
-        )}
-
-        {activeTab === 'form' && (
-          <div className="mb-4 space-y-1.5">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg border border-border w-fit">
-              <ClipboardCheck className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">Sedang mengeksekusi form check pada tanggal: {executionDate}</span>
-            </div>
-            <p className="text-xs text-muted-foreground pl-1">Hazard yang dianalisis adalah hazard yang tidak termasuk duplicate</p>
-          </div>
-        )}
-
-        {activeTab === 'hazard' && (
-          <div className="mb-4 space-y-1.5">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg border border-border w-fit">
-              <Tag className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">Sedang memberi label hazard pada tanggal: {executionDate}</span>
-            </div>
-            <p className="text-xs text-muted-foreground pl-1">Proses dilakukan setelah Form Checker selesai</p>
-          </div>
-        )}
 
         {/* Pipeline Status Cards */}
         <div className="mb-4">
