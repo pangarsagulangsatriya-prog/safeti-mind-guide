@@ -12,6 +12,7 @@ interface StatusCardProps {
   status: 'menunggu' | 'diproses' | 'berhasil' | 'gagal';
   count: number;
   onClick?: () => void;
+  active?: boolean;
 }
 
 const statusConfig = {
@@ -45,7 +46,7 @@ const statusConfig = {
   },
 };
 
-const StatusCard: React.FC<StatusCardProps> = ({ status, count, onClick }) => {
+const StatusCard: React.FC<StatusCardProps> = ({ status, count, onClick, active }) => {
   const config = statusConfig[status];
   const Icon = config.icon;
 
@@ -56,8 +57,10 @@ const StatusCard: React.FC<StatusCardProps> = ({ status, count, onClick }) => {
           <button
             onClick={onClick}
             className={cn(
-              'flex items-center gap-3 px-4 py-3 rounded-lg border border-border bg-card transition-all cursor-pointer',
-              'hover:shadow-sm hover:bg-muted/50'
+              'flex items-center gap-3 px-4 py-3 rounded-lg border transition-all cursor-pointer',
+              active
+                ? 'border-foreground/20 bg-foreground/5 shadow-sm'
+                : 'border-border bg-card hover:shadow-sm hover:bg-muted/50'
             )}
           >
             <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
@@ -80,21 +83,50 @@ const StatusCard: React.FC<StatusCardProps> = ({ status, count, onClick }) => {
 
 interface PipelineStatusCardsProps {
   stats: {
+    total: number;
     menunggu: number;
     diproses: number;
     berhasil: number;
     gagal: number;
   };
   onStatusClick?: (status: string) => void;
+  activeFilter?: string;
 }
 
-const PipelineStatusCards: React.FC<PipelineStatusCardsProps> = ({ stats, onStatusClick }) => {
+const PipelineStatusCards: React.FC<PipelineStatusCardsProps> = ({ stats, onStatusClick, activeFilter }) => {
   return (
     <div className="flex items-center gap-3 flex-wrap">
-      <StatusCard status="menunggu" count={stats.menunggu} onClick={() => onStatusClick?.(statusConfig.menunggu.filterValue)} />
-      <StatusCard status="diproses" count={stats.diproses} onClick={() => onStatusClick?.(statusConfig.diproses.filterValue)} />
-      <StatusCard status="berhasil" count={stats.berhasil} onClick={() => onStatusClick?.(statusConfig.berhasil.filterValue)} />
-      <StatusCard status="gagal" count={stats.gagal} onClick={() => onStatusClick?.(statusConfig.gagal.filterValue)} />
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => onStatusClick?.('all')}
+              className={cn(
+                'flex items-center gap-3 px-4 py-3 rounded-lg border transition-all cursor-pointer',
+                activeFilter === 'all' || !activeFilter
+                  ? 'border-foreground/20 bg-foreground/5 shadow-sm'
+                  : 'border-border bg-card hover:shadow-sm hover:bg-muted/50'
+              )}
+            >
+              <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                <span className="text-sm font-bold text-muted-foreground">#</span>
+              </div>
+              <div className="text-left">
+                <div className="text-xl font-bold text-foreground">{stats.total}</div>
+                <div className="text-xs text-muted-foreground">Total</div>
+              </div>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-[200px]">
+            <p className="text-xs font-medium mb-0.5">Total</p>
+            <p className="text-xs text-muted-foreground">Jumlah semua item pada filter aktif.</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <StatusCard status="menunggu" count={stats.menunggu} onClick={() => onStatusClick?.(statusConfig.menunggu.filterValue)} active={activeFilter === statusConfig.menunggu.filterValue} />
+      <StatusCard status="diproses" count={stats.diproses} onClick={() => onStatusClick?.(statusConfig.diproses.filterValue)} active={activeFilter === statusConfig.diproses.filterValue} />
+      <StatusCard status="berhasil" count={stats.berhasil} onClick={() => onStatusClick?.(statusConfig.berhasil.filterValue)} active={activeFilter === statusConfig.berhasil.filterValue} />
+      <StatusCard status="gagal" count={stats.gagal} onClick={() => onStatusClick?.(statusConfig.gagal.filterValue)} active={activeFilter === statusConfig.gagal.filterValue} />
     </div>
   );
 };
