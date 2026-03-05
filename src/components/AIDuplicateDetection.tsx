@@ -3,7 +3,7 @@ import {
   Copy, ClipboardCheck, Tag, 
   Search, RefreshCw, ChevronRight, Clock, ChevronsLeft, ChevronsRight,
   Bot, ExternalLink, CheckCircle2,
-  AlertCircle, ChevronLeft, Eye, RotateCcw, X, ArrowUpDown, CalendarDays, ChevronDown, MoreHorizontal
+  AlertCircle, ChevronLeft, Eye, RotateCcw, X, ArrowUpDown, CalendarDays, ChevronDown, MoreHorizontal, Info
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -80,6 +80,39 @@ const tabConfig = {
     subtitle: 'Memberi label hazard secara otomatis untuk mempercepat review',
     buttonLabel: 'Open Hazard Labeling',
     navigateTo: '/dashboard-evaluator',
+  },
+};
+
+const moduleInfoContent: Record<string, { description: string; bullets: string[]; note: string; ariaLabel: string }> = {
+  duplicate: {
+    description: 'Mendeteksi laporan yang berpotensi duplikat berdasarkan kesamaan konten dan konteks.',
+    bullets: [
+      'Mengelompokkan laporan serupa ke dalam cluster',
+      'Memberikan skor kesamaan antar laporan',
+      'Menandai laporan yang perlu direview manual',
+    ],
+    note: 'Tidak mengubah data asli, hanya rekomendasi.',
+    ariaLabel: 'Info tentang Duplicate Matcher',
+  },
+  form: {
+    description: 'Memeriksa kelengkapan dan konsistensi setiap field dalam laporan hazard.',
+    bullets: [
+      'Mendeteksi field yang kosong atau tidak lengkap',
+      'Memvalidasi format dan konsistensi data',
+      'Memberikan saran perbaikan untuk setiap temuan',
+    ],
+    note: 'Tidak mengubah data asli, hanya rekomendasi.',
+    ariaLabel: 'Info tentang Form Checker',
+  },
+  hazard: {
+    description: 'Memberi label kategori hazard secara otomatis menggunakan AI.',
+    bullets: [
+      'Mengklasifikasikan jenis hazard dari deskripsi laporan',
+      'Menentukan tingkat risiko awal',
+      'Mempercepat proses review dan triage',
+    ],
+    note: 'Tidak mengubah data asli, hanya rekomendasi.',
+    ariaLabel: 'Info tentang Hazard Labeling',
   },
 };
 
@@ -585,6 +618,57 @@ const AIDuplicateDetection: React.FC = () => {
               {activeTab === 'form' && <ClipboardCheck className="w-5 h-5 text-muted-foreground" />}
               {activeTab === 'hazard' && <Tag className="w-5 h-5 text-muted-foreground" />}
               <h2 className="text-lg font-semibold text-foreground">{currentConfig.title}</h2>
+              {/* Module Info Tooltip (desktop) / Popover (mobile) */}
+              <Popover>
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <PopoverTrigger asChild>
+                      <TooltipTrigger asChild>
+                        <button
+                          aria-label={moduleInfoContent[activeTab].ariaLabel}
+                          className="inline-flex items-center justify-center rounded-full text-muted-foreground/60 hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 transition-colors"
+                        >
+                          <Info className="w-4 h-4" />
+                        </button>
+                      </TooltipTrigger>
+                    </PopoverTrigger>
+                    {/* Desktop tooltip */}
+                    <TooltipContent
+                      side="bottom"
+                      align="start"
+                      className="hidden md:block max-w-[320px] bg-popover text-popover-foreground border border-border shadow-md rounded-lg p-3"
+                    >
+                      <p className="text-sm font-medium mb-1.5">{moduleInfoContent[activeTab].description}</p>
+                      <ul className="space-y-1 mb-2">
+                        {moduleInfoContent[activeTab].bullets.map((b, i) => (
+                          <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <span className="mt-1 w-1 h-1 rounded-full bg-muted-foreground/50 shrink-0" />
+                            {b}
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="text-[11px] text-muted-foreground/70 italic">{moduleInfoContent[activeTab].note}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                {/* Mobile popover */}
+                <PopoverContent
+                  side="bottom"
+                  align="start"
+                  className="md:hidden max-w-[300px] p-3"
+                >
+                  <p className="text-sm font-medium mb-1.5">{moduleInfoContent[activeTab].description}</p>
+                  <ul className="space-y-1 mb-2">
+                    {moduleInfoContent[activeTab].bullets.map((b, i) => (
+                      <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                        <span className="mt-1 w-1 h-1 rounded-full bg-muted-foreground/50 shrink-0" />
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-[11px] text-muted-foreground/70 italic">{moduleInfoContent[activeTab].note}</p>
+                </PopoverContent>
+              </Popover>
             </div>
             <TooltipProvider>
               <Tooltip>
