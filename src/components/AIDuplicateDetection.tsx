@@ -51,7 +51,7 @@ const tabs = [
 const tabConfig = {
   duplicate: {
     title: 'Duplicate Matcher',
-    subtitle: 'Memproses laporan pada rentang waktu tertentu untuk deteksi duplikat',
+    subtitle: '',
     buttonLabel: 'Open Duplicate Evaluator',
     navigateTo: '/dashboard-evaluator',
   },
@@ -95,6 +95,10 @@ const AIDuplicateDetection: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [siteFilter, setSiteFilter] = useState('all');
+  const [batchFilter, setBatchFilter] = useState('all');
+
+  // Batch time options (WIB)
+  const batchTimeOptions = ['07:00', '10:00', '13:00', '16:00', '19:00'];
   const [currentPage, setCurrentPage] = useState(1);
   const [errorMode, setErrorMode] = useState(false);
 
@@ -154,24 +158,27 @@ const AIDuplicateDetection: React.FC = () => {
         item.pelapor.toLowerCase().includes(searchQuery.toLowerCase());
       const matchStatus = statusFilter === 'all' || item.status === statusFilter;
       const matchSite = siteFilter === 'all' || item.site.toLowerCase() === siteFilter;
-      return matchSearch && matchStatus && matchSite;
+      // Batch filter: match by batch_id or time
+      const matchBatch = batchFilter === 'all' || (item.batch_id && item.batch_id.includes(batchFilter));
+      return matchSearch && matchStatus && matchSite && matchBatch;
     });
-  }, [searchQuery, statusFilter, siteFilter, errorMode]);
+  }, [searchQuery, statusFilter, siteFilter, errorMode, batchFilter]);
 
   // Reset page on filter change
-  useEffect(() => { setCurrentPage(1); clearSelection(); }, [searchQuery, statusFilter, siteFilter, activeTab, errorMode]);
+  useEffect(() => { setCurrentPage(1); clearSelection(); }, [searchQuery, statusFilter, siteFilter, activeTab, errorMode, batchFilter]);
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
   const paginatedItems = filteredItems.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-  // Pipeline stats
+  // Pipeline stats based on filtered items (follows active filters)
   const currentStats = useMemo(() => ({
-    menunggu: mockQueueItems.filter(i => i.status === 'menunggu').length,
-    diproses: mockQueueItems.filter(i => i.status === 'diproses').length,
-    berhasil: mockQueueItems.filter(i => i.status === 'sukses').length,
-    gagal: mockQueueItems.filter(i => i.status === 'gagal').length,
-  }), []);
+    total: filteredItems.length,
+    menunggu: filteredItems.filter(i => i.status === 'menunggu').length,
+    diproses: filteredItems.filter(i => i.status === 'diproses').length,
+    berhasil: filteredItems.filter(i => i.status === 'sukses').length,
+    gagal: filteredItems.filter(i => i.status === 'gagal').length,
+  }), [filteredItems]);
 
   // Selection helpers
   const allVisibleSelected = paginatedItems.length > 0 && paginatedItems.every(i => selectedIds.has(i.id));
@@ -478,6 +485,15 @@ const AIDuplicateDetection: React.FC = () => {
                 <SelectItem value="gagal">Gagal</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={batchFilter} onValueChange={setBatchFilter}>
+              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Semua Batch" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Batch</SelectItem>
+                {batchTimeOptions.map(time => (
+                  <SelectItem key={time} value={time}>Batch {time} WIB</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <div className="ml-auto">
               <Button
                 variant={errorMode ? 'default' : 'outline'}
@@ -496,56 +512,15 @@ const AIDuplicateDetection: React.FC = () => {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-4">
-        {/* Step Header */}
-        <div className="mb-4">
+        {/* Step Header - Title only, no subtitle */}
+        <div className="mb-3">
           <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                {activeTab === 'duplicate' && <Copy className="w-5 h-5 text-muted-foreground" />}
-                {activeTab === 'form' && <ClipboardCheck className="w-5 h-5 text-muted-foreground" />}
-                {activeTab === 'hazard' && <Tag className="w-5 h-5 text-muted-foreground" />}
-                <h2 className="text-lg font-semibold text-foreground">{currentConfig.title}</h2>
-              </div>
-              <p className="text-sm text-muted-foreground">{currentConfig.subtitle}</p>
-
-              {activeTab === 'duplicate' && (
-                <div className="mt-3 flex items-center gap-4 flex-wrap">
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg border border-border">
-                    <Timer className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-medium text-foreground">Time Window: 3 jam terakhir</span>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5" />
-                      <span>Countdown: <span className="font-mono font-medium text-foreground">{formatCountdown(timeRemaining)}</span></span>
-                    </div>
-                    <span>Update berikutnya: <span className="font-medium text-foreground">{getNextUpdateTime()}</span></span>
-                    <span>Terakhir diperbarui: <span className="font-medium text-foreground">{formatLastUpdated()}</span></span>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'form' && (
-                <div className="mt-3 space-y-1.5">
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg border border-border w-fit">
-                    <ClipboardCheck className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-medium text-foreground">Sedang mengeksekusi form check pada tanggal: {executionDate}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground pl-1">Hazard yang dianalisis adalah hazard yang tidak termasuk duplicate</p>
-                </div>
-              )}
-
-              {activeTab === 'hazard' && (
-                <div className="mt-3 space-y-1.5">
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg border border-border w-fit">
-                    <Tag className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-medium text-foreground">Sedang memberi label hazard pada tanggal: {executionDate}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground pl-1">Proses dilakukan setelah Form Checker selesai</p>
-                </div>
-              )}
+            <div className="flex items-center gap-2">
+              {activeTab === 'duplicate' && <Copy className="w-5 h-5 text-muted-foreground" />}
+              {activeTab === 'form' && <ClipboardCheck className="w-5 h-5 text-muted-foreground" />}
+              {activeTab === 'hazard' && <Tag className="w-5 h-5 text-muted-foreground" />}
+              <h2 className="text-lg font-semibold text-foreground">{currentConfig.title}</h2>
             </div>
-
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -560,9 +535,47 @@ const AIDuplicateDetection: React.FC = () => {
           </div>
         </div>
 
+        {/* Time Window Info */}
+        {activeTab === 'duplicate' && (
+          <div className="mb-4 flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg border border-border">
+              <Timer className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">Time Window: 3 jam terakhir</span>
+            </div>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" />
+                <span>Countdown: <span className="font-mono font-medium text-foreground">{formatCountdown(timeRemaining)}</span></span>
+              </div>
+              <span>Update berikutnya: <span className="font-medium text-foreground">{getNextUpdateTime()}</span></span>
+              <span>Terakhir diperbarui: <span className="font-medium text-foreground">{formatLastUpdated()}</span></span>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'form' && (
+          <div className="mb-4 space-y-1.5">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg border border-border w-fit">
+              <ClipboardCheck className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">Sedang mengeksekusi form check pada tanggal: {executionDate}</span>
+            </div>
+            <p className="text-xs text-muted-foreground pl-1">Hazard yang dianalisis adalah hazard yang tidak termasuk duplicate</p>
+          </div>
+        )}
+
+        {activeTab === 'hazard' && (
+          <div className="mb-4 space-y-1.5">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg border border-border w-fit">
+              <Tag className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">Sedang memberi label hazard pada tanggal: {executionDate}</span>
+            </div>
+            <p className="text-xs text-muted-foreground pl-1">Proses dilakukan setelah Form Checker selesai</p>
+          </div>
+        )}
+
         {/* Pipeline Status Cards */}
         <div className="mb-4">
-          <PipelineStatusCards stats={currentStats} onStatusClick={handleStatusCardClick} />
+          <PipelineStatusCards stats={currentStats} onStatusClick={handleStatusCardClick} activeFilter={statusFilter} />
         </div>
 
         {/* Bulk Action Bar */}
