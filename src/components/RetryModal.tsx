@@ -1,5 +1,5 @@
-import React from 'react';
-import { AlertTriangle, RotateCcw, Clock, AlertCircle } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { AlertTriangle, RotateCcw, Clock, AlertCircle, Info } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,10 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { QueueItem, QueueItemStatus, statusDisplayConfig } from '@/data/queueMonitorData';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { QueueItem, QueueItemStatus, statusDisplayConfig, BatchRecord } from '@/data/queueMonitorData';
 import {
   Table,
   TableBody,
@@ -20,12 +23,15 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from '@/hooks/use-toast';
 
 interface RetryModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   items: QueueItem[];
-  onRetry: (itemIds: string[]) => void;
+  onRetry: (itemIds: string[], targetBatch: 'current' | 'next') => void;
+  currentBatches: BatchRecord[];
+  scheduleSlots: string[];
 }
 
 const StatusBadge = ({ status }: { status: QueueItemStatus }) => {
@@ -39,15 +45,33 @@ const StatusBadge = ({ status }: { status: QueueItemStatus }) => {
   );
 };
 
-const RetryModal: React.FC<RetryModalProps> = ({ open, onOpenChange, items, onRetry }) => {
+const RetryModal: React.FC<RetryModalProps> = ({ open, onOpenChange, items, onRetry, currentBatches, scheduleSlots }) => {
   const eligible = items.filter(i => i.status === 'gagal');
   const skipped = items.filter(i => i.status !== 'gagal');
   const isSingle = items.length === 1;
   const item = isSingle ? items[0] : null;
 
+  // Determine running and next batch
+  const runningBatch = useMemo(() => currentBatches.find(b => b.status === 'running'), [currentBatches]);
+  const nextBatchSlot = useMemo(() => {
+    const completedOrRunning = currentBatches.map(b => b.slot_time);
+    return scheduleSlots.find(s => !completedOrRunning.includes(s)) || scheduleSlots[scheduleSlots.length - 1];
+  }, [currentBatches, scheduleSlots]);
+
+  // Can the running batch accept retries?
+  const canAcceptRetry = runningBatch ? true : false; // In real app: runningBatch.can_accept_retry
+
+  const [targetBatch, setTargetBatch] = useState<'current' | 'next'>('next');
+
   const handleSubmit = () => {
-    onRetry(eligible.map(i => i.id));
+    onRetry(eligible.map(i => i.id), targetBatch);
     onOpenChange(false);
+    toast({
+      title: targetBatch === 'current'
+        ? 'Retry dijadwalkan pada batch sedang berjalan.'
+        : 'Retry dijadwalkan pada batch berikutnya.',
+      description: `${eligible.length} laporan akan diproses ulang.`,
+    });
   };
 
   return (
@@ -142,6 +166,82 @@ const RetryModal: React.FC<RetryModalProps> = ({ open, onOpenChange, items, onRe
             </div>
           )}
 
+          {/* Batch target selection */}
+          <div className="space-y-2.5">
+            <p className="text-xs font-medium text-foreground">Jalankan di batch</p>
+            <RadioGroup value={targetBatch} onValueChange={(v) => setTargetBatch(v as 'current' | 'next')} className="space-y-0">
+              {/* Running batch option */}
+              {runningBatch && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        className={`flex items-start gap-3 rounded-lg border p-3 transition-colors ${
+                          !canAcceptRetry
+                            ? 'opacity-50 cursor-not-allowed border-border bg-muted/20'
+                            : targetBatch === 'current'
+                              ? 'border-primary/40 bg-primary/5'
+                              : 'border-border hover:border-border/80 cursor-pointer'
+                        }`}
+                        onClick={() => canAcceptRetry && setTargetBatch('current')}
+                      >
+                        <RadioGroupItem value="current" id="batch-current" disabled={!canAcceptRetry} className="mt-0.5" />
+                        <Label htmlFor="batch-current" className={`flex-1 space-y-0.5 ${!canAcceptRetry ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">Batch sedang berjalan ({runningBatch.slot_time} WIB)</span>
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/60 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground leading-snug">
+                            Diproses secepatnya jika batch masih menerima item.
+                          </p>
+                        </Label>
+                      </div>
+                    </TooltipTrigger>
+                    {!canAcceptRetry && (
+                      <TooltipContent side="top" className="max-w-[260px]">
+                        <p className="text-xs">Batch sedang berjalan sudah tidak menerima item baru. Pilih batch berikutnya.</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+
+              {/* Next batch option */}
+              <div
+                className={`flex items-start gap-3 rounded-lg border p-3 transition-colors cursor-pointer ${
+                  targetBatch === 'next'
+                    ? 'border-primary/40 bg-primary/5'
+                    : 'border-border hover:border-border/80'
+                }`}
+                onClick={() => setTargetBatch('next')}
+              >
+                <RadioGroupItem value="next" id="batch-next" className="mt-0.5" />
+                <Label htmlFor="batch-next" className="flex-1 space-y-0.5 cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Batch berikutnya ({nextBatchSlot} WIB)</span>
+                    <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-snug">
+                    Dijadwalkan pada slot batch berikutnya.
+                  </p>
+                </Label>
+              </div>
+            </RadioGroup>
+
+            {/* Extra warning for running batch */}
+            {targetBatch === 'current' && runningBatch && (
+              <div className="flex items-start gap-2 p-2 rounded-lg bg-primary/5 border border-primary/15">
+                <Info className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+                <p className="text-[11px] text-muted-foreground">
+                  Batch berjalan dapat memerlukan waktu lebih lama.
+                </p>
+              </div>
+            )}
+          </div>
+
           {/* Cost warning */}
           <div className="flex items-start gap-2.5 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
             <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
@@ -149,6 +249,11 @@ const RetryModal: React.FC<RetryModalProps> = ({ open, onOpenChange, items, onRe
               <p className="text-xs text-foreground/80">
                 Tindakan ini akan memproses ulang laporan dan dapat menambah biaya pemrosesan (LLM/compute).
               </p>
+              {targetBatch === 'current' && runningBatch && (
+                <p className="text-[11px] text-muted-foreground">
+                  Item akan dimasukkan ke batch yang sedang berjalan jika masih memungkinkan.
+                </p>
+              )}
               <p className="text-[11px] text-muted-foreground">
                 Gunakan retry hanya jika diperlukan.
               </p>

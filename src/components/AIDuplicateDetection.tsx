@@ -239,8 +239,7 @@ const AIDuplicateDetection: React.FC = () => {
     }
   };
 
-  const handleRetrySubmit = (itemIds: string[]) => {
-    toast.success(`Retry dimulai untuk ${itemIds.length} laporan.`);
+  const handleRetrySubmit = (itemIds: string[], targetBatch: 'current' | 'next') => {
     clearSelection();
   };
 
@@ -853,6 +852,8 @@ const AIDuplicateDetection: React.FC = () => {
         onOpenChange={setRetryModalOpen}
         items={retryModalItems}
         onRetry={handleRetrySubmit}
+        currentBatches={currentBatches}
+        scheduleSlots={SCHEDULE_SLOTS}
       />
 
       <ErrorDetailsDrawer
