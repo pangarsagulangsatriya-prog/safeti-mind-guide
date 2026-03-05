@@ -14,7 +14,6 @@ export interface ScheduleSlot {
   time: string;
   status: SlotStatus;
   batchId?: string;
-  // Stats for done batches
   fetched_count?: number;
   success?: number;
   failed?: number;
@@ -27,17 +26,10 @@ interface BatchScheduleBarProps {
 }
 
 const slotIcons: Record<SlotStatus, React.ReactNode> = {
-  running: <Loader2 className="w-3 h-3 animate-spin" />,
-  done: <CheckCircle2 className="w-3 h-3" />,
-  upcoming: <Clock className="w-3 h-3" />,
-  missed: <AlertTriangle className="w-3 h-3" />,
-};
-
-const slotStyles: Record<SlotStatus, string> = {
-  running: 'bg-primary text-primary-foreground border-primary shadow-sm',
-  done: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400',
-  upcoming: 'bg-muted text-muted-foreground border-border',
-  missed: 'bg-warning/10 text-warning border-warning/30',
+  running: <Loader2 className="w-3.5 h-3.5 animate-spin" />,
+  done: <CheckCircle2 className="w-3.5 h-3.5" />,
+  upcoming: <Clock className="w-3.5 h-3.5" />,
+  missed: <AlertTriangle className="w-3.5 h-3.5" />,
 };
 
 function getNextBatchCountdown(slots: ScheduleSlot[]): string | null {
@@ -73,37 +65,92 @@ const BatchScheduleBar: React.FC<BatchScheduleBarProps> = ({ slots, onSlotClick,
     return () => clearInterval(timer);
   }, [slots]);
 
+  const runningSlot = slots.find(s => s.status === 'running');
+
   return (
-    <div className="flex items-center gap-3 flex-wrap">
-      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Jadwal Batch (WIB):</span>
-      <div className="flex items-center gap-1.5">
-        <TooltipProvider>
-          {slots.map(slot => {
+    <div className="flex items-center gap-4 flex-wrap">
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Jadwal Batch</span>
+        <span className="text-[10px] text-muted-foreground/60 font-medium">(WIB)</span>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <TooltipProvider delayDuration={200}>
+          {slots.map((slot, idx) => {
+            const isActive = activeSlot === slot.time;
+            const isDone = slot.status === 'done';
+            const isRunning = slot.status === 'running';
+            const isUpcoming = slot.status === 'upcoming';
+            const isMissed = slot.status === 'missed';
+
+            const chipClasses = cn(
+              'relative flex items-center gap-1.5 px-3.5 py-2 rounded-lg border text-xs font-semibold transition-all duration-200 cursor-pointer',
+              isDone && 'bg-emerald-500/8 text-emerald-600 border-emerald-500/25 hover:bg-emerald-500/15 hover:border-emerald-500/40 dark:text-emerald-400 dark:border-emerald-400/25',
+              isRunning && 'bg-blue-500/8 text-blue-600 border-blue-500/25 hover:bg-blue-500/15 hover:border-blue-500/40 dark:text-blue-400 dark:border-blue-400/25 shadow-sm shadow-blue-500/10',
+              isUpcoming && 'bg-muted/60 text-muted-foreground/60 border-border/60 hover:bg-muted hover:text-muted-foreground hover:border-border',
+              isMissed && 'bg-amber-500/8 text-amber-600 border-amber-500/25 hover:bg-amber-500/15 dark:text-amber-400',
+              isActive && 'ring-2 ring-primary/30 ring-offset-1 ring-offset-background',
+            );
+
             const chip = (
               <button
                 key={slot.time}
                 onClick={() => onSlotClick(slot)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all cursor-pointer',
-                  slotStyles[slot.status],
-                  activeSlot === slot.time && 'ring-2 ring-primary/40'
-                )}
+                className={chipClasses}
               >
+                {isRunning && (
+                  <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500" />
+                  </span>
+                )}
                 {slotIcons[slot.status]}
-                {slot.time}
+                <span className="tabular-nums">{slot.time}</span>
               </button>
             );
 
-            if (slot.status === 'done' && slot.fetched_count != null) {
+            if (isDone && slot.fetched_count != null) {
               return (
                 <Tooltip key={slot.time}>
                   <TooltipTrigger asChild>{chip}</TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">
-                    <div className="space-y-0.5">
-                      <div>Total Fetch: <span className="font-semibold">{slot.fetched_count}</span></div>
-                      <div>Sukses: <span className="font-semibold text-emerald-500">{slot.success ?? 0}</span></div>
-                      <div>Gagal: <span className="font-semibold text-destructive">{slot.failed ?? 0}</span></div>
+                  <TooltipContent side="bottom" align="center" className="px-3 py-2.5">
+                    <div className="space-y-1 text-xs">
+                      <div className="font-semibold text-foreground mb-1.5">Batch {slot.time} WIB — Selesai</div>
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-muted-foreground">Total Fetch</span>
+                        <span className="font-semibold tabular-nums">{slot.fetched_count}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-muted-foreground">Berhasil</span>
+                        <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{slot.success ?? 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-muted-foreground">Gagal</span>
+                        <span className="font-semibold tabular-nums text-destructive">{slot.failed ?? 0}</span>
+                      </div>
                     </div>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+
+            if (isRunning) {
+              return (
+                <Tooltip key={slot.time}>
+                  <TooltipTrigger asChild>{chip}</TooltipTrigger>
+                  <TooltipContent side="bottom" align="center" className="px-3 py-2">
+                    <div className="text-xs font-medium">Batch sedang berjalan...</div>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+
+            if (isUpcoming) {
+              return (
+                <Tooltip key={slot.time}>
+                  <TooltipTrigger asChild>{chip}</TooltipTrigger>
+                  <TooltipContent side="bottom" align="center" className="px-3 py-2">
+                    <div className="text-xs text-muted-foreground">Belum dieksekusi</div>
                   </TooltipContent>
                 </Tooltip>
               );
@@ -113,11 +160,28 @@ const BatchScheduleBar: React.FC<BatchScheduleBarProps> = ({ slots, onSlotClick,
           })}
         </TooltipProvider>
       </div>
-      {countdown && (
-        <span className="ml-auto text-sm text-muted-foreground">
-          Batch berikutnya: <span className="font-mono font-medium text-foreground">{countdown}</span>
-        </span>
-      )}
+
+      {/* Separator */}
+      <div className="h-6 w-px bg-border/60" />
+
+      {/* Countdown / Running info */}
+      <div className="flex items-center gap-3 ml-auto">
+        {runningSlot && (
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="inline-flex h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+            <span className="text-muted-foreground">Batch</span>
+            <span className="font-semibold text-blue-600 dark:text-blue-400 tabular-nums">{runningSlot.time}</span>
+            <span className="text-muted-foreground">sedang berjalan</span>
+          </div>
+        )}
+        {countdown && (
+          <div className="flex items-center gap-1.5 text-xs">
+            <Clock className="w-3 h-3 text-muted-foreground/60" />
+            <span className="text-muted-foreground">Berikutnya</span>
+            <span className="font-mono font-semibold text-foreground tabular-nums bg-muted/60 px-1.5 py-0.5 rounded">{countdown}</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
