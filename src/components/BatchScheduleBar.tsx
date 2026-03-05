@@ -1,13 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, Loader2, Clock, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 export type SlotStatus = 'upcoming' | 'running' | 'done' | 'missed';
 
 export interface ScheduleSlot {
-  time: string; // e.g. "07:00"
+  time: string;
   status: SlotStatus;
   batchId?: string;
+  // Stats for done batches
+  fetched_count?: number;
+  success?: number;
+  failed?: number;
 }
 
 interface BatchScheduleBarProps {
@@ -25,14 +35,13 @@ const slotIcons: Record<SlotStatus, React.ReactNode> = {
 
 const slotStyles: Record<SlotStatus, string> = {
   running: 'bg-primary text-primary-foreground border-primary shadow-sm',
-  done: 'bg-success/10 text-success border-success/30',
+  done: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400',
   upcoming: 'bg-muted text-muted-foreground border-border',
   missed: 'bg-warning/10 text-warning border-warning/30',
 };
 
 function getNextBatchCountdown(slots: ScheduleSlot[]): string | null {
   const now = new Date();
-  // Use WIB (UTC+7)
   const wibOffset = 7 * 60;
   const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
   const wibMinutes = utcMinutes + wibOffset;
@@ -54,10 +63,6 @@ function getNextBatchCountdown(slots: ScheduleSlot[]): string | null {
   return null;
 }
 
-function getRunningSlot(slots: ScheduleSlot[]): ScheduleSlot | null {
-  return slots.find(s => s.status === 'running') || null;
-}
-
 const BatchScheduleBar: React.FC<BatchScheduleBarProps> = ({ slots, onSlotClick, activeSlot }) => {
   const [countdown, setCountdown] = useState<string | null>(null);
 
@@ -68,38 +73,51 @@ const BatchScheduleBar: React.FC<BatchScheduleBarProps> = ({ slots, onSlotClick,
     return () => clearInterval(timer);
   }, [slots]);
 
-  const running = getRunningSlot(slots);
-
   return (
     <div className="flex items-center gap-3 flex-wrap">
       <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Jadwal Batch (WIB):</span>
       <div className="flex items-center gap-1.5">
-        {slots.map(slot => (
-          <button
-            key={slot.time}
-            onClick={() => onSlotClick(slot)}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all',
-              slotStyles[slot.status],
-              activeSlot === slot.time && 'ring-2 ring-primary/40'
-            )}
-          >
-            {slotIcons[slot.status]}
-            {slot.time}
-          </button>
-        ))}
+        <TooltipProvider>
+          {slots.map(slot => {
+            const chip = (
+              <button
+                key={slot.time}
+                onClick={() => onSlotClick(slot)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all cursor-pointer',
+                  slotStyles[slot.status],
+                  activeSlot === slot.time && 'ring-2 ring-primary/40'
+                )}
+              >
+                {slotIcons[slot.status]}
+                {slot.time}
+              </button>
+            );
+
+            if (slot.status === 'done' && slot.fetched_count != null) {
+              return (
+                <Tooltip key={slot.time}>
+                  <TooltipTrigger asChild>{chip}</TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    <div className="space-y-0.5">
+                      <div>Total Fetch: <span className="font-semibold">{slot.fetched_count}</span></div>
+                      <div>Sukses: <span className="font-semibold text-emerald-500">{slot.success ?? 0}</span></div>
+                      <div>Gagal: <span className="font-semibold text-destructive">{slot.failed ?? 0}</span></div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+
+            return chip;
+          })}
+        </TooltipProvider>
       </div>
-      <div className="ml-auto flex items-center gap-4 text-sm text-muted-foreground">
-        {running && (
-          <span className="flex items-center gap-1.5">
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-            <span>Sedang berjalan: <span className="font-medium text-foreground">{running.time} batch</span></span>
-          </span>
-        )}
-        {countdown && (
-          <span>Batch berikutnya: <span className="font-mono font-medium text-foreground">{countdown}</span></span>
-        )}
-      </div>
+      {countdown && (
+        <span className="ml-auto text-sm text-muted-foreground">
+          Batch berikutnya: <span className="font-mono font-medium text-foreground">{countdown}</span>
+        </span>
+      )}
     </div>
   );
 };

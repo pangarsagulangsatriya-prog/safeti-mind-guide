@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Copy, ClipboardCheck, Tag, 
   Search, RefreshCw, ChevronRight, Filter, Clock,
-  Bot, ExternalLink, Timer, CheckCircle2,
+  Bot, ExternalLink, CheckCircle2,
   AlertCircle, History, ChevronLeft, Eye, RotateCcw, ToggleLeft, ToggleRight
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -38,8 +38,7 @@ import RetryModal, { RetryConfig } from './RetryModal';
 import ErrorDetailsDrawer from './ErrorDetailsDrawer';
 import BatchHistoryDrawer from './BatchHistoryDrawer';
 import BatchScheduleBar, { ScheduleSlot } from './BatchScheduleBar';
-import ActiveBatchCard from './ActiveBatchCard';
-import { ActiveBatchInfo } from './ActiveBatchCard';
+
 import {
   QueueItem, QueueItemStatus, statusDisplayConfig,
   mockQueueItems, mockBatches, mockAttemptHistory,
@@ -120,17 +119,9 @@ const AIDuplicateDetection: React.FC = () => {
 
   const [batchDrawerOpen, setBatchDrawerOpen] = useState(false);
 
-  const [lastUpdated] = useState(new Date());
-
   const executionDate = new Date().toLocaleDateString('id-ID', {
     day: '2-digit', month: 'long', year: 'numeric',
   });
-
-  const formatLastUpdated = () => {
-    return lastUpdated.toLocaleString('id-ID', {
-      hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short', year: 'numeric',
-    });
-  };
 
   // Build schedule slots from mock data
   const scheduleSlots: ScheduleSlot[] = useMemo(() => {
@@ -141,23 +132,17 @@ const AIDuplicateDetection: React.FC = () => {
         if (batch.status === 'running') status = 'running';
         else status = 'done';
       }
-      return { time, status, batchId: batch?.batch_id };
+      return {
+        time,
+        status,
+        batchId: batch?.batch_id,
+        fetched_count: batch?.fetched_count,
+        success: batch?.success,
+        failed: batch?.failed,
+      };
     });
   }, []);
 
-  // Active batch info
-  const activeBatch: ActiveBatchInfo | null = useMemo(() => {
-    const running = mockBatches.find(b => b.status === 'running');
-    if (!running) return null;
-    return {
-      batch_id: running.batch_id,
-      slot_time: running.slot_time,
-      start_at: running.start_at,
-      elapsed_seconds: running.duration_seconds,
-      eta_seconds: 480, // mock ETA
-      fetched_count: running.fetched_count,
-    };
-  }, []);
 
   // Unique values for filters
   const uniquePerusahaan = useMemo(() => [...new Set(mockQueueItems.map(i => i.perusahaan))], []);
@@ -532,49 +517,7 @@ const AIDuplicateDetection: React.FC = () => {
           </div>
         </div>
 
-        {/* Run Info Header (replaces old Time Window) */}
-        {activeTab === 'duplicate' && (
-          <div className="mb-4 rounded-lg border border-border bg-card p-3">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              {/* Left: Run Context */}
-              <div className="flex items-center gap-4 flex-wrap">
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg border border-border">
-                  <Timer className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium text-foreground">Time Window: 3 jam terakhir</span>
-                </div>
-                <span className="text-xs text-muted-foreground">Timezone: WIB (UTC+7)</span>
-                <span className="text-xs text-muted-foreground">
-                  Terakhir diperbarui: <span className="font-medium text-foreground">{formatLastUpdated()}</span>
-                </span>
-              </div>
-
-              {/* Right: Controls */}
-              <div className="flex items-center gap-2">
-                {activeBatch && (
-                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 gap-1">
-                    <RefreshCw className="w-3 h-3 animate-spin" />
-                    Batch Aktif
-                  </Badge>
-                )}
-                <Button variant="outline" size="sm" onClick={() => setBatchDrawerOpen(true)} className="gap-1.5 text-muted-foreground">
-                  <History className="w-4 h-4" />
-                  Riwayat Batch
-                </Button>
-                <Button
-                  variant={errorMode ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setErrorMode(prev => !prev)}
-                  className="gap-1.5 text-xs"
-                >
-                  {errorMode ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-                  Error Saja
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Jadwal Batch */}
+        {/* Jadwal Batch - TOP of content area */}
         {activeTab === 'duplicate' && (
           <div className="mb-4 rounded-lg border border-border bg-card p-3">
             <BatchScheduleBar
@@ -604,9 +547,6 @@ const AIDuplicateDetection: React.FC = () => {
             <p className="text-xs text-muted-foreground pl-1">Proses dilakukan setelah Form Checker selesai</p>
           </div>
         )}
-
-        {/* Active Batch Inline Card */}
-        {activeTab === 'duplicate' && <ActiveBatchCard batch={activeBatch} />}
 
         {/* Pipeline Status Cards */}
         <div className="mb-4">
@@ -678,19 +618,17 @@ const AIDuplicateDetection: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
-            {activeTab !== 'duplicate' && (
-              <div className="ml-auto">
-                <Button
-                  variant={errorMode ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setErrorMode(prev => !prev)}
-                  className="gap-1.5 text-xs"
-                >
-                  {errorMode ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-                  Tampilkan Error Saja
-                </Button>
-              </div>
-            )}
+            <div className="ml-auto">
+              <Button
+                variant={errorMode ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setErrorMode(prev => !prev)}
+                className="gap-1.5 text-xs"
+              >
+                {errorMode ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                Error Saja
+              </Button>
+            </div>
           </div>
         </div>
 
