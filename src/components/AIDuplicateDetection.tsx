@@ -3,7 +3,7 @@ import {
   Copy, ClipboardCheck, Tag, 
   Search, RefreshCw, ChevronRight, Clock, ChevronsLeft, ChevronsRight,
   Bot, ExternalLink, CheckCircle2,
-  AlertCircle, History, ChevronLeft, Eye, EyeOff, RotateCcw, X, ArrowUpDown
+  AlertCircle, ChevronLeft, Eye, EyeOff, RotateCcw, X, ArrowUpDown, CalendarDays, ChevronDown
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -42,7 +42,7 @@ import MultiSelectDropdown from './MultiSelectDropdown';
 
 import {
   QueueItem, QueueItemStatus, statusDisplayConfig,
-  mockQueueItems, mockBatches, mockAttemptHistory,
+  allQueueItems, allBatches, mockAttemptHistory, DATE_OPTIONS,
 } from '@/data/queueMonitorData';
 
 const tabs = [
@@ -105,6 +105,7 @@ const AIDuplicateDetection: React.FC = () => {
   const [lokasiFilter, setLokasiFilter] = useState<string[]>([]);
   const [detailLokasiFilter, setDetailLokasiFilter] = useState<string[]>([]);
   const [batchFilter, setBatchFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('2026-03-06');
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_ITEMS_PER_PAGE);
@@ -126,10 +127,14 @@ const AIDuplicateDetection: React.FC = () => {
     day: '2-digit', month: 'long', year: 'numeric',
   });
 
-  // Build schedule slots from mock data
+  // Current data based on date filter
+  const currentItems = useMemo(() => allQueueItems[dateFilter] || [], [dateFilter]);
+  const currentBatches = useMemo(() => allBatches[dateFilter] || [], [dateFilter]);
+
+  // Build schedule slots from current date's batches
   const scheduleSlots: ScheduleSlot[] = useMemo(() => {
     return SCHEDULE_SLOTS.map(time => {
-      const batch = mockBatches.find(b => b.slot_time === time);
+      const batch = currentBatches.find(b => b.slot_time === time);
       let status: ScheduleSlot['status'] = 'upcoming';
       if (batch) {
         if (batch.status === 'running') status = 'running';
@@ -144,18 +149,18 @@ const AIDuplicateDetection: React.FC = () => {
         failed: batch?.failed,
       };
     });
-  }, []);
+  }, [currentBatches]);
 
 
   // Unique values for filters
-  const uniquePerusahaan = useMemo(() => [...new Set(mockQueueItems.map(i => i.perusahaan))], []);
-  const uniqueLokasi = useMemo(() => [...new Set(mockQueueItems.map(i => i.lokasi))], []);
-  const uniqueDetailLokasi = useMemo(() => [...new Set(mockQueueItems.map(i => i.detail_lokasi))], []);
-  const uniqueSite = useMemo(() => [...new Set(mockQueueItems.map(i => i.site))], []);
+  const uniquePerusahaan = useMemo(() => [...new Set(currentItems.map(i => i.perusahaan))] as string[], [currentItems]);
+  const uniqueLokasi = useMemo(() => [...new Set(currentItems.map(i => i.lokasi))] as string[], [currentItems]);
+  const uniqueDetailLokasi = useMemo(() => [...new Set(currentItems.map(i => i.detail_lokasi))] as string[], [currentItems]);
+  const uniqueSite = useMemo(() => [...new Set(currentItems.map(i => i.site))] as string[], [currentItems]);
 
   // Filtered data
   const filteredItems = useMemo(() => {
-    return mockQueueItems.filter(item => {
+    return currentItems.filter(item => {
       if (errorMode && item.status !== 'gagal') return false;
       const q = searchQuery.toLowerCase();
       const matchSearch = !searchQuery ||
@@ -171,9 +176,9 @@ const AIDuplicateDetection: React.FC = () => {
       const matchBatch = batchFilter === 'all' || item.batch_id === batchFilter;
       return matchSearch && matchStatus && matchSite && matchPerusahaan && matchLokasi && matchDetailLokasi && matchBatch;
     });
-  }, [searchQuery, statusFilter, siteFilter, perusahaanFilter, lokasiFilter, detailLokasiFilter, errorMode, batchFilter]);
+  }, [searchQuery, statusFilter, siteFilter, perusahaanFilter, lokasiFilter, detailLokasiFilter, errorMode, batchFilter, currentItems]);
 
-  useEffect(() => { setCurrentPage(1); clearSelection(); }, [searchQuery, statusFilter, siteFilter, perusahaanFilter, lokasiFilter, detailLokasiFilter, activeTab, errorMode, batchFilter]);
+  useEffect(() => { setCurrentPage(1); clearSelection(); }, [searchQuery, statusFilter, siteFilter, perusahaanFilter, lokasiFilter, detailLokasiFilter, activeTab, errorMode, batchFilter, dateFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
   const paginatedItems = filteredItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -219,7 +224,7 @@ const AIDuplicateDetection: React.FC = () => {
   };
 
   const handleRetryFromErrorDrawer = (itemId: string) => {
-    const item = mockQueueItems.find(i => i.id === itemId);
+    const item = currentItems.find(i => i.id === itemId);
     if (item) {
       setErrorDrawerOpen(false);
       setRetryModalItems([{ id: item.id, status: item.status }]);
@@ -237,7 +242,7 @@ const AIDuplicateDetection: React.FC = () => {
   };
 
   const handleRetryBatch = (batchId: string, scope: 'failed_only' | 'entire_batch') => {
-    const batchItems = mockQueueItems
+    const batchItems = currentItems
       .filter(i => i.batch_id === batchId)
       .map(i => ({ id: i.id, status: i.status }));
     setRetryModalItems(batchItems);
@@ -288,7 +293,7 @@ const AIDuplicateDetection: React.FC = () => {
   // Build meaningful batch dropdown options
   const batchDropdownOptions = useMemo(() => {
     return SCHEDULE_SLOTS.map(time => {
-      const batch = mockBatches.find(b => b.slot_time === time);
+      const batch = currentBatches.find(b => b.slot_time === time);
       const statusLabel = batch ? 
         (batch.status === 'running' ? '🔄' : batch.status === 'completed' ? '✅' : batch.status === 'partial' ? '⚠️' : '❌') 
         : '⏳';
@@ -297,7 +302,7 @@ const AIDuplicateDetection: React.FC = () => {
         label: `${statusLabel} ${time} WIB`,
       };
     });
-  }, []);
+  }, [currentBatches]);
 
   // Pagination helpers
   const paginationRange = useMemo(() => {
@@ -550,10 +555,6 @@ const AIDuplicateDetection: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setBatchDrawerOpen(true)} className="gap-1.5 text-muted-foreground">
-                <History className="w-4 h-4" />
-                Riwayat Batch
-              </Button>
               <Button variant="outline" size="sm" onClick={handleRefresh} className="text-muted-foreground">
                 <RefreshCw className="w-4 h-4" />
               </Button>
@@ -617,11 +618,49 @@ const AIDuplicateDetection: React.FC = () => {
         {/* Jadwal Batch - TOP of content area */}
         {activeTab === 'duplicate' && (
           <div className="mb-4 rounded-lg border border-border bg-card p-3.5">
-            <BatchScheduleBar
-              slots={scheduleSlots}
-              onSlotClick={handleSlotClick}
-              activeSlot={batchFilter !== 'all' ? scheduleSlots.find(s => s.batchId === batchFilter || `no-batch-${s.time}` === batchFilter)?.time : undefined}
-            />
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Date Filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Tanggal</span>
+                <div className="flex items-center gap-1">
+                  {DATE_OPTIONS.map(opt => {
+                    const isActive = dateFilter === opt.value;
+                    return (
+                      <TooltipProvider key={opt.value} delayDuration={200}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => { setDateFilter(opt.value); setBatchFilter('all'); }}
+                              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                                isActive
+                                  ? 'bg-primary/10 text-primary border-primary/30 ring-2 ring-primary/20 ring-offset-1 ring-offset-background shadow-sm'
+                                  : 'bg-muted/60 text-muted-foreground/70 border-border/60 hover:bg-muted hover:text-muted-foreground hover:border-border'
+                              }`}
+                            >
+                              <CalendarDays className="w-3.5 h-3.5" />
+                              <span className="tabular-nums">{opt.label}</span>
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="text-xs">{opt.sublabel}</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Separator */}
+              <div className="h-6 w-px bg-border/60" />
+
+              {/* Batch Schedule */}
+              <div className="flex-1 min-w-0">
+                <BatchScheduleBar
+                  slots={scheduleSlots}
+                  onSlotClick={handleSlotClick}
+                  activeSlot={batchFilter !== 'all' ? scheduleSlots.find(s => s.batchId === batchFilter || `no-batch-${s.time}` === batchFilter)?.time : undefined}
+                />
+              </div>
+            </div>
           </div>
         )}
 
@@ -745,6 +784,10 @@ const AIDuplicateDetection: React.FC = () => {
         {/* Active Filter Chips */}
         {(() => {
           const activeFilters: { key: string; label: string; onClear: () => void }[] = [];
+          if (dateFilter !== '2026-03-06') {
+            const dateOpt = DATE_OPTIONS.find(o => o.value === dateFilter);
+            activeFilters.push({ key: 'date', label: `Tanggal: ${dateOpt?.sublabel || dateFilter}`, onClear: () => setDateFilter('2026-03-06') });
+          }
           if (perusahaanFilter.length > 0) activeFilters.push({ key: 'perusahaan', label: `Perusahaan: ${perusahaanFilter.length} dipilih`, onClear: () => setPerusahaanFilter([]) });
           if (siteFilter.length > 0) activeFilters.push({ key: 'site', label: `Site: ${siteFilter.length} dipilih`, onClear: () => setSiteFilter([]) });
           if (lokasiFilter.length > 0) activeFilters.push({ key: 'lokasi', label: `Lokasi: ${lokasiFilter.length} dipilih`, onClear: () => setLokasiFilter([]) });
@@ -761,7 +804,7 @@ const AIDuplicateDetection: React.FC = () => {
 
           const resetAll = () => {
             setPerusahaanFilter([]); setSiteFilter([]); setLokasiFilter([]); setDetailLokasiFilter([]);
-            setStatusFilter('all'); setBatchFilter('all'); setErrorMode(false); setSearchQuery('');
+            setStatusFilter('all'); setBatchFilter('all'); setErrorMode(false); setSearchQuery(''); setDateFilter('2026-03-06');
           };
 
           return (
@@ -832,7 +875,7 @@ const AIDuplicateDetection: React.FC = () => {
       <BatchHistoryDrawer
         open={batchDrawerOpen}
         onOpenChange={setBatchDrawerOpen}
-        batches={mockBatches}
+        batches={currentBatches}
         onRetryBatch={handleRetryBatch}
         onViewBatchDetail={(batchId) => {
           toast.info(`Detail batch ${batchId}`);
