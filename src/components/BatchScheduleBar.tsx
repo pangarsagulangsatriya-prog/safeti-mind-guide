@@ -180,7 +180,7 @@ const BatchScheduleBar: React.FC<BatchScheduleBarProps> = ({ slots, onSlotClick,
         {countdown && (
           <div className="flex items-center gap-1.5 text-xs">
             <Clock className="w-3 h-3 text-muted-foreground/60" />
-            <span className="text-muted-foreground">Berikutnya</span>
+            <span className="text-muted-foreground">Time Window</span>
             <span className="font-mono font-semibold text-foreground tabular-nums bg-muted/60 px-1.5 py-0.5 rounded">{countdown}</span>
           </div>
         )}
