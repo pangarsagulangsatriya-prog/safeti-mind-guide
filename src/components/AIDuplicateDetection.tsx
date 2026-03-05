@@ -3,7 +3,7 @@ import {
   Copy, ClipboardCheck, Tag, 
   Search, RefreshCw, ChevronRight, Clock, ChevronsLeft, ChevronsRight,
   Bot, ExternalLink, CheckCircle2,
-  AlertCircle, ChevronLeft, Eye, EyeOff, RotateCcw, X, ArrowUpDown, CalendarDays, ChevronDown
+  AlertCircle, ChevronLeft, Eye, RotateCcw, X, ArrowUpDown, CalendarDays, ChevronDown, MoreHorizontal
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -11,6 +11,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -39,7 +45,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useNavigate } from 'react-router-dom';
 import PipelineStatusCards from './PipelineStatusCards';
-import RetryModal, { RetryConfig } from './RetryModal';
+import RetryModal from './RetryModal';
 import ErrorDetailsDrawer from './ErrorDetailsDrawer';
 import BatchHistoryDrawer from './BatchHistoryDrawer';
 import BatchScheduleBar, { ScheduleSlot } from './BatchScheduleBar';
@@ -119,9 +125,7 @@ const AIDuplicateDetection: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const [retryModalOpen, setRetryModalOpen] = useState(false);
-  const [retryModalItems, setRetryModalItems] = useState<Array<{ id: string; status: QueueItemStatus }>>([]);
-  const [retryModalMode, setRetryModalMode] = useState<'items' | 'batch'>('items');
-  const [retryBatchId, setRetryBatchId] = useState<string | undefined>();
+  const [retryModalItems, setRetryModalItems] = useState<QueueItem[]>([]);
 
   const [errorDrawerOpen, setErrorDrawerOpen] = useState(false);
   const [errorDrawerItem, setErrorDrawerItem] = useState<QueueItem | null>(null);
@@ -222,9 +226,7 @@ const AIDuplicateDetection: React.FC = () => {
   const hasEligibleSelected = selectedItems.some(i => eligibleStatuses.includes(i.status));
 
   const handleRetrySelected = () => {
-    setRetryModalItems(selectedItems.map(i => ({ id: i.id, status: i.status })));
-    setRetryModalMode('items');
-    setRetryBatchId(undefined);
+    setRetryModalItems(selectedItems);
     setRetryModalOpen(true);
   };
 
@@ -232,27 +234,19 @@ const AIDuplicateDetection: React.FC = () => {
     const item = currentItems.find(i => i.id === itemId);
     if (item) {
       setErrorDrawerOpen(false);
-      setRetryModalItems([{ id: item.id, status: item.status }]);
-      setRetryModalMode('items');
-      setRetryBatchId(undefined);
+      setRetryModalItems([item]);
       setRetryModalOpen(true);
     }
   };
 
-  const handleRetrySubmit = (config: RetryConfig) => {
-    toast.success('Retry triggered', {
-      description: `${config.item_ids.length} item akan diproses ulang.`,
-    });
+  const handleRetrySubmit = (itemIds: string[]) => {
+    toast.success(`Retry dimulai untuk ${itemIds.length} laporan.`);
     clearSelection();
   };
 
   const handleRetryBatch = (batchId: string, scope: 'failed_only' | 'entire_batch') => {
-    const batchItems = currentItems
-      .filter(i => i.batch_id === batchId)
-      .map(i => ({ id: i.id, status: i.status }));
+    const batchItems = currentItems.filter(i => i.batch_id === batchId);
     setRetryModalItems(batchItems);
-    setRetryModalMode('batch');
-    setRetryBatchId(batchId);
     setBatchDrawerOpen(false);
     setRetryModalOpen(true);
   };
@@ -277,9 +271,7 @@ const AIDuplicateDetection: React.FC = () => {
   };
 
   const handleRetrySingle = (item: QueueItem) => {
-    setRetryModalItems([{ id: item.id, status: item.status }]);
-    setRetryModalMode('items');
-    setRetryBatchId(undefined);
+    setRetryModalItems([item]);
     setRetryModalOpen(true);
   };
 
@@ -380,7 +372,7 @@ const AIDuplicateDetection: React.FC = () => {
                 <span className="inline-flex items-center gap-1 group cursor-default">Detail Lokasi <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-40 transition-opacity" /></span>
               </TableHead>
               <TableHead className={`${headerCellClass} min-w-[100px]`}>Status</TableHead>
-              <TableHead className={`${headerCellClass} min-w-[120px] text-right`}>Aksi</TableHead>
+              <TableHead className={`${headerCellClass} min-w-[60px] text-right`}>Aksi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -451,36 +443,25 @@ const AIDuplicateDetection: React.FC = () => {
                     <QueueStatusBadge status={item.status} />
                   </TableCell>
                   <TableCell className={`${cellClass} text-right`}>
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => handleViewItem(item)}
-                        className="inline-flex items-center gap-1 h-7 px-2 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/50"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Lihat</span>
-                      </button>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 px-2 text-xs gap-1"
-                                disabled={item.status !== 'gagal'}
-                                onClick={() => handleRetrySingle(item)}
-                              >
-                                <RotateCcw className="w-3 h-3" />
-                                Retry
-                              </Button>
-                            </span>
-                          </TooltipTrigger>
-                          {item.status !== 'gagal' && (
-                            <TooltipContent>Retry hanya tersedia untuk status Gagal.</TooltipContent>
-                          )}
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="inline-flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-[160px]">
+                        <DropdownMenuItem onClick={() => handleViewItem(item)} className="gap-2 text-xs">
+                          <Eye className="w-3.5 h-3.5" />
+                          Lihat Detail
+                        </DropdownMenuItem>
+                        {item.status === 'gagal' && (
+                          <DropdownMenuItem onClick={() => handleRetrySingle(item)} className="gap-2 text-xs">
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            Ulangi Proses
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))
@@ -787,7 +768,7 @@ const AIDuplicateDetection: React.FC = () => {
                   : 'bg-background text-muted-foreground border-input hover:bg-muted/50 hover:text-foreground'
               }`}
             >
-              {errorMode ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              {errorMode ? <Eye className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
               Gagal
             </button>
           </div>
@@ -871,8 +852,6 @@ const AIDuplicateDetection: React.FC = () => {
         open={retryModalOpen}
         onOpenChange={setRetryModalOpen}
         items={retryModalItems}
-        mode={retryModalMode}
-        batchId={retryBatchId}
         onRetry={handleRetrySubmit}
       />
 
