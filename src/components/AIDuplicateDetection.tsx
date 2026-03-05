@@ -3,7 +3,7 @@ import {
   Copy, ClipboardCheck, Tag, 
   Search, RefreshCw, ChevronRight, Filter, Clock,
   Bot, ExternalLink, Timer, CheckCircle2,
-  AlertCircle, History, ChevronLeft
+  AlertCircle, History, ChevronLeft, Eye, RotateCcw, ToggleLeft, ToggleRight
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -96,6 +96,7 @@ const AIDuplicateDetection: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [siteFilter, setSiteFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [errorMode, setErrorMode] = useState(false);
 
   // Selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -147,6 +148,7 @@ const AIDuplicateDetection: React.FC = () => {
   // Filtered data
   const filteredItems = useMemo(() => {
     return mockQueueItems.filter(item => {
+      if (errorMode && item.status !== 'gagal') return false;
       const matchSearch = !searchQuery ||
         item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.pelapor.toLowerCase().includes(searchQuery.toLowerCase());
@@ -154,10 +156,10 @@ const AIDuplicateDetection: React.FC = () => {
       const matchSite = siteFilter === 'all' || item.site.toLowerCase() === siteFilter;
       return matchSearch && matchStatus && matchSite;
     });
-  }, [searchQuery, statusFilter, siteFilter]);
+  }, [searchQuery, statusFilter, siteFilter, errorMode]);
 
   // Reset page on filter change
-  useEffect(() => { setCurrentPage(1); }, [searchQuery, statusFilter, siteFilter, activeTab]);
+  useEffect(() => { setCurrentPage(1); clearSelection(); }, [searchQuery, statusFilter, siteFilter, activeTab, errorMode]);
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
@@ -247,34 +249,48 @@ const AIDuplicateDetection: React.FC = () => {
     navigate(currentConfig.navigateTo);
   };
 
+  const handleViewItem = (item: QueueItem) => {
+    setErrorDrawerItem(item);
+    setErrorDrawerOpen(true);
+  };
+
+  const handleRetrySingle = (item: QueueItem) => {
+    setRetryModalItems([{ id: item.id, status: item.status }]);
+    setRetryModalMode('items');
+    setRetryBatchId(undefined);
+    setRetryModalOpen(true);
+  };
+
   const renderTable = () => (
     <div className="rounded-lg border border-border bg-card overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/40 hover:bg-muted/40">
-            <TableHead className="w-10">
-              <Checkbox
-                checked={allVisibleSelected}
-                onCheckedChange={toggleSelectAll}
-                aria-label="Select all"
-              />
-            </TableHead>
+            {errorMode && (
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={allVisibleSelected}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Select all"
+                />
+              </TableHead>
+            )}
             <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">ID</TableHead>
             <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">Timestamp</TableHead>
             <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">Pelapor</TableHead>
             <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">Site</TableHead>
             <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">Lokasi</TableHead>
             <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">Status</TableHead>
-            <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">Duplicate Status</TableHead>
+            <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider text-right">Aksi</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {paginatedItems.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+              <TableCell colSpan={errorMode ? 8 : 7} className="text-center py-12 text-muted-foreground">
                 <div className="flex flex-col items-center gap-2">
                   <Search className="w-5 h-5 text-muted-foreground/50" />
-                  <span>Tidak ada item ditemukan.</span>
+                  <span>{errorMode ? 'Tidak ada item gagal pada rentang waktu ini.' : 'Tidak ada item ditemukan.'}</span>
                 </div>
               </TableCell>
             </TableRow>
@@ -284,12 +300,14 @@ const AIDuplicateDetection: React.FC = () => {
                 key={item.id}
                 className={`transition-colors ${selectedIds.has(item.id) ? 'bg-primary/5' : 'hover:bg-muted/20'}`}
               >
-                <TableCell>
-                  <Checkbox
-                    checked={selectedIds.has(item.id)}
-                    onCheckedChange={() => toggleSelect(item.id)}
-                  />
-                </TableCell>
+                {errorMode && (
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedIds.has(item.id)}
+                      onCheckedChange={() => toggleSelect(item.id)}
+                    />
+                  </TableCell>
+                )}
                 <TableCell className="font-mono text-sm font-medium text-foreground">{item.id}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{item.timestamp}</TableCell>
                 <TableCell className="text-sm font-medium text-foreground">{item.pelapor}</TableCell>
@@ -300,8 +318,34 @@ const AIDuplicateDetection: React.FC = () => {
                 <TableCell>
                   <QueueStatusBadge status={item.status} />
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {item.duplicateStatus || <span className="text-muted-foreground/40">—</span>}
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1.5">
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground" onClick={() => handleViewItem(item)}>
+                      <Eye className="w-3.5 h-3.5" />
+                      View
+                    </Button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs gap-1"
+                              disabled={item.status !== 'gagal'}
+                              onClick={() => handleRetrySingle(item)}
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              Retry
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        {item.status !== 'gagal' && (
+                          <TooltipContent>Retry hanya tersedia untuk status Gagal.</TooltipContent>
+                        )}
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                 </TableCell>
               </TableRow>
             ))
@@ -434,6 +478,18 @@ const AIDuplicateDetection: React.FC = () => {
                 <SelectItem value="gagal">Gagal</SelectItem>
               </SelectContent>
             </Select>
+            <div className="ml-auto">
+              <Button
+                variant={errorMode ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setErrorMode(prev => !prev)}
+                className="gap-1.5 text-xs"
+              >
+                {errorMode ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                Tampilkan Error Saja
+              </Button>
+              {errorMode && <span className="ml-2 text-xs text-muted-foreground">Menampilkan item dengan status Gagal.</span>}
+            </div>
           </div>
         </div>
       </div>
@@ -510,21 +566,19 @@ const AIDuplicateDetection: React.FC = () => {
         </div>
 
         {/* Bulk Action Bar */}
-        {someSelected && (
+        {errorMode && someSelected && (
           <div className="mb-3 flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border bg-muted/50 sticky top-[73px] z-[5]">
-            <span className="text-sm font-medium text-foreground">{selectedIds.size} item dipilih</span>
+            <span className="text-sm font-medium text-foreground">{selectedIds.size} item gagal dipilih</span>
             <div className="flex-1" />
             <Button
               size="sm"
-              variant="outline"
               onClick={handleRetrySelected}
-              disabled={!hasEligibleSelected}
               className="gap-1.5"
             >
-              Ulangi Proses (Terpilih)
+              Retry Terpilih
             </Button>
             <Button variant="ghost" size="sm" onClick={clearSelection} className="text-muted-foreground">
-              Hapus Pilihan
+              Batal Pilih
             </Button>
           </div>
         )}
