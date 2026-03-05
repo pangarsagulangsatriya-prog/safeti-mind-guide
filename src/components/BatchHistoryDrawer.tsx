@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { History, RotateCcw, ChevronRight, CheckCircle2, AlertCircle, Clock, XCircle } from 'lucide-react';
+import React from 'react';
+import { History, RotateCcw, ChevronRight, CheckCircle2, AlertCircle, Clock, XCircle, FileText } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,10 +30,16 @@ const formatBatchTime = (iso: string) => {
   return d.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 };
 
+const formatDurationSeconds = (s: number) => {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}m ${sec.toString().padStart(2, '0')}s`;
+};
+
 const BatchHistoryDrawer: React.FC<BatchHistoryDrawerProps> = ({ open, onOpenChange, batches, onRetryBatch, onViewBatchDetail }) => {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-[520px] overflow-y-auto">
+      <SheetContent className="sm:max-w-[560px] overflow-y-auto">
         <SheetHeader className="pb-4">
           <SheetTitle className="flex items-center gap-2">
             <History className="w-5 h-5 text-primary" />
@@ -44,6 +50,7 @@ const BatchHistoryDrawer: React.FC<BatchHistoryDrawerProps> = ({ open, onOpenCha
         <div className="space-y-3">
           {batches.map((batch) => {
             const hasFailures = batch.failed > 0 || batch.stuck > 0 || batch.needs_check > 0;
+            const isRunning = batch.status === 'running';
             return (
               <div key={batch.batch_id} className="rounded-lg border border-border bg-card p-4 space-y-3">
                 {/* Header */}
@@ -54,15 +61,25 @@ const BatchHistoryDrawer: React.FC<BatchHistoryDrawerProps> = ({ open, onOpenCha
                       {batchStatusBadge(batch.status)}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {formatBatchTime(batch.window_start)} — {formatBatchTime(batch.window_end)}
+                      Slot: <span className="font-medium text-foreground">{batch.slot_time} WIB</span>
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground">
                       {batch.triggered_by === 'manual' ? '👤 Manual' : '⚙️ System'}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">{batch.duration}</p>
                   </div>
+                </div>
+
+                {/* Time details */}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <span>Start: <span className="font-medium text-foreground">{formatBatchTime(batch.start_at)}</span></span>
+                  <span>End: <span className="font-medium text-foreground">{isRunning ? '—' : (batch.end_at ? formatBatchTime(batch.end_at) : '—')}</span></span>
+                  <span>Durasi: <span className="font-medium text-foreground">{isRunning ? `${formatDurationSeconds(batch.duration_seconds)} (berjalan)` : formatDurationSeconds(batch.duration_seconds)}</span></span>
+                  <span className="flex items-center gap-1">
+                    <FileText className="w-3 h-3" />
+                    Fetched: <span className="font-medium text-foreground">{batch.fetched_count}</span>
+                  </span>
                 </div>
 
                 {/* Stats */}

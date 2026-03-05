@@ -37,6 +37,9 @@ import PipelineStatusCards from './PipelineStatusCards';
 import RetryModal, { RetryConfig } from './RetryModal';
 import ErrorDetailsDrawer from './ErrorDetailsDrawer';
 import BatchHistoryDrawer from './BatchHistoryDrawer';
+import BatchScheduleBar, { ScheduleSlot } from './BatchScheduleBar';
+import ActiveBatchCard from './ActiveBatchCard';
+import { ActiveBatchInfo } from './ActiveBatchCard';
 import {
   QueueItem, QueueItemStatus, statusDisplayConfig,
   mockQueueItems, mockBatches, mockAttemptHistory,
@@ -69,6 +72,8 @@ const tabConfig = {
   },
 };
 
+const SCHEDULE_SLOTS = ['07:00', '10:00', '13:00', '16:00', '19:00'];
+
 const QueueStatusBadge = ({ status }: { status: QueueItemStatus }) => {
   const conf = statusDisplayConfig[status];
   if (!conf) return null;
@@ -100,15 +105,11 @@ const AIDuplicateDetection: React.FC = () => {
   const [detailLokasiFilter, setDetailLokasiFilter] = useState('all');
   const [batchFilter, setBatchFilter] = useState('all');
 
-  // Batch time options (WIB)
-  const batchTimeOptions = ['07:00', '10:00', '13:00', '16:00', '19:00'];
   const [currentPage, setCurrentPage] = useState(1);
   const [errorMode, setErrorMode] = useState(false);
 
-  // Selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // Modal/Drawer states
   const [retryModalOpen, setRetryModalOpen] = useState(false);
   const [retryModalItems, setRetryModalItems] = useState<Array<{ id: string; status: QueueItemStatus }>>([]);
   const [retryModalMode, setRetryModalMode] = useState<'items' | 'batch'>('items');
@@ -119,38 +120,44 @@ const AIDuplicateDetection: React.FC = () => {
 
   const [batchDrawerOpen, setBatchDrawerOpen] = useState(false);
 
-  // Time window
-  const [timeRemaining, setTimeRemaining] = useState(3 * 60 * 60);
   const [lastUpdated] = useState(new Date());
 
   const executionDate = new Date().toLocaleDateString('id-ID', {
     day: '2-digit', month: 'long', year: 'numeric',
   });
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeRemaining((prev) => (prev > 0 ? prev - 1 : 3 * 60 * 60));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const formatCountdown = (seconds: number) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const getNextUpdateTime = () => {
-    const next = new Date(lastUpdated.getTime() + 3 * 60 * 60 * 1000);
-    return next.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-  };
-
   const formatLastUpdated = () => {
     return lastUpdated.toLocaleString('id-ID', {
       hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short', year: 'numeric',
     });
   };
+
+  // Build schedule slots from mock data
+  const scheduleSlots: ScheduleSlot[] = useMemo(() => {
+    return SCHEDULE_SLOTS.map(time => {
+      const batch = mockBatches.find(b => b.slot_time === time);
+      let status: ScheduleSlot['status'] = 'upcoming';
+      if (batch) {
+        if (batch.status === 'running') status = 'running';
+        else status = 'done';
+      }
+      return { time, status, batchId: batch?.batch_id };
+    });
+  }, []);
+
+  // Active batch info
+  const activeBatch: ActiveBatchInfo | null = useMemo(() => {
+    const running = mockBatches.find(b => b.status === 'running');
+    if (!running) return null;
+    return {
+      batch_id: running.batch_id,
+      slot_time: running.slot_time,
+      start_at: running.start_at,
+      elapsed_seconds: running.duration_seconds,
+      eta_seconds: 480, // mock ETA
+      fetched_count: running.fetched_count,
+    };
+  }, []);
 
   // Unique values for filters
   const uniquePerusahaan = useMemo(() => [...new Set(mockQueueItems.map(i => i.perusahaan))], []);
@@ -176,14 +183,11 @@ const AIDuplicateDetection: React.FC = () => {
     });
   }, [searchQuery, statusFilter, siteFilter, perusahaanFilter, lokasiFilter, detailLokasiFilter, errorMode, batchFilter]);
 
-  // Reset page on filter change
   useEffect(() => { setCurrentPage(1); clearSelection(); }, [searchQuery, statusFilter, siteFilter, perusahaanFilter, lokasiFilter, detailLokasiFilter, activeTab, errorMode, batchFilter]);
 
-  // Pagination
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
   const paginatedItems = filteredItems.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-  // Pipeline stats based on filtered items (follows active filters)
   const currentStats = useMemo(() => ({
     total: filteredItems.length,
     menunggu: filteredItems.filter(i => i.status === 'menunggu').length,
@@ -192,7 +196,6 @@ const AIDuplicateDetection: React.FC = () => {
     gagal: filteredItems.filter(i => i.status === 'gagal').length,
   }), [filteredItems]);
 
-  // Selection helpers
   const allVisibleSelected = paginatedItems.length > 0 && paginatedItems.every(i => selectedIds.has(i.id));
   const someSelected = selectedIds.size > 0;
 
@@ -279,6 +282,39 @@ const AIDuplicateDetection: React.FC = () => {
     setRetryBatchId(undefined);
     setRetryModalOpen(true);
   };
+
+  const handleSlotClick = (slot: ScheduleSlot) => {
+    if (slot.batchId) {
+      // Find the batch slot_time value to filter
+      const batch = mockBatches.find(b => b.batch_id === slot.batchId);
+      if (batch) {
+        setBatchFilter(batch.slot_time);
+      }
+    } else {
+      setBatchFilter(slot.time);
+      toast.info(`Belum ada data batch untuk slot ${slot.time} WIB`);
+    }
+  };
+
+  // Build meaningful batch dropdown options
+  const batchDropdownOptions = useMemo(() => {
+    const todayBatches = mockBatches.filter(b => {
+      const d = new Date(b.start_at);
+      const today = new Date();
+      return d.toDateString() === today.toDateString();
+    });
+    // Include all slots
+    return SCHEDULE_SLOTS.map(time => {
+      const batch = mockBatches.find(b => b.slot_time === time);
+      const statusLabel = batch ? 
+        (batch.status === 'running' ? '🔄' : batch.status === 'completed' ? '✅' : batch.status === 'partial' ? '⚠️' : '❌') 
+        : '⏳';
+      return {
+        value: time,
+        label: `${statusLabel} ${time} WIB${batch ? ` (${batch.batch_id})` : ''}`,
+      };
+    });
+  }, []);
 
   const renderTable = () => (
     <div className="rounded-lg border border-border bg-card overflow-hidden">
@@ -473,7 +509,7 @@ const AIDuplicateDetection: React.FC = () => {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-4">
-        {/* Step Header - Title only, no subtitle */}
+        {/* Step Header */}
         <div className="mb-3">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-2">
@@ -496,21 +532,56 @@ const AIDuplicateDetection: React.FC = () => {
           </div>
         </div>
 
-        {/* Time Window Info */}
+        {/* Run Info Header (replaces old Time Window) */}
         {activeTab === 'duplicate' && (
-          <div className="mb-4 flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg border border-border">
-              <Timer className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">Time Window: 3 jam terakhir</span>
-            </div>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5" />
-                <span>Countdown: <span className="font-mono font-medium text-foreground">{formatCountdown(timeRemaining)}</span></span>
+          <div className="mb-4 rounded-lg border border-border bg-card p-3">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              {/* Left: Run Context */}
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg border border-border">
+                  <Timer className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-foreground">Time Window: 3 jam terakhir</span>
+                </div>
+                <span className="text-xs text-muted-foreground">Timezone: WIB (UTC+7)</span>
+                <span className="text-xs text-muted-foreground">
+                  Terakhir diperbarui: <span className="font-medium text-foreground">{formatLastUpdated()}</span>
+                </span>
               </div>
-              <span>Update berikutnya: <span className="font-medium text-foreground">{getNextUpdateTime()}</span></span>
-              <span>Terakhir diperbarui: <span className="font-medium text-foreground">{formatLastUpdated()}</span></span>
+
+              {/* Right: Controls */}
+              <div className="flex items-center gap-2">
+                {activeBatch && (
+                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 gap-1">
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    Batch Aktif
+                  </Badge>
+                )}
+                <Button variant="outline" size="sm" onClick={() => setBatchDrawerOpen(true)} className="gap-1.5 text-muted-foreground">
+                  <History className="w-4 h-4" />
+                  Riwayat Batch
+                </Button>
+                <Button
+                  variant={errorMode ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setErrorMode(prev => !prev)}
+                  className="gap-1.5 text-xs"
+                >
+                  {errorMode ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                  Error Saja
+                </Button>
+              </div>
             </div>
+          </div>
+        )}
+
+        {/* Jadwal Batch */}
+        {activeTab === 'duplicate' && (
+          <div className="mb-4 rounded-lg border border-border bg-card p-3">
+            <BatchScheduleBar
+              slots={scheduleSlots}
+              onSlotClick={handleSlotClick}
+              activeSlot={batchFilter !== 'all' ? batchFilter : undefined}
+            />
           </div>
         )}
 
@@ -534,12 +605,15 @@ const AIDuplicateDetection: React.FC = () => {
           </div>
         )}
 
+        {/* Active Batch Inline Card */}
+        {activeTab === 'duplicate' && <ActiveBatchCard batch={activeBatch} />}
+
         {/* Pipeline Status Cards */}
         <div className="mb-4">
           <PipelineStatusCards stats={currentStats} onStatusClick={handleStatusCardClick} activeFilter={statusFilter} />
         </div>
 
-        {/* Filter Bar - below cards, above table */}
+        {/* Filter Bar */}
         <div className="mb-4">
           <div className="flex items-center gap-2 flex-wrap">
             <div className="relative min-w-[200px] max-w-xs">
@@ -596,26 +670,27 @@ const AIDuplicateDetection: React.FC = () => {
               </SelectContent>
             </Select>
             <Select value={batchFilter} onValueChange={setBatchFilter}>
-              <SelectTrigger className="w-[150px]"><SelectValue placeholder="Batch" /></SelectTrigger>
+              <SelectTrigger className="w-[220px]"><SelectValue placeholder="Batch" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Batch</SelectItem>
-                {batchTimeOptions.map(time => (
-                  <SelectItem key={time} value={time}>Batch {time} WIB</SelectItem>
+                {batchDropdownOptions.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <div className="ml-auto">
-              <Button
-                variant={errorMode ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setErrorMode(prev => !prev)}
-                className="gap-1.5 text-xs"
-              >
-                {errorMode ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-                Tampilkan Error Saja
-              </Button>
-              {errorMode && <span className="ml-2 text-xs text-muted-foreground">Menampilkan item dengan status Gagal.</span>}
-            </div>
+            {activeTab !== 'duplicate' && (
+              <div className="ml-auto">
+                <Button
+                  variant={errorMode ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setErrorMode(prev => !prev)}
+                  className="gap-1.5 text-xs"
+                >
+                  {errorMode ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                  Tampilkan Error Saja
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 

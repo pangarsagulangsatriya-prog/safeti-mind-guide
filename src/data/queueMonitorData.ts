@@ -29,6 +29,7 @@ export interface QueueItem {
 
 export interface BatchRecord {
   batch_id: string;
+  slot_time: string; // e.g. "10:00"
   window_start: string;
   window_end: string;
   triggered_at: string;
@@ -40,6 +41,10 @@ export interface BatchRecord {
   needs_check: number;
   stuck: number;
   duration: string;
+  start_at: string;
+  end_at: string | null;
+  duration_seconds: number;
+  fetched_count: number;
 }
 
 export interface AttemptRecord {
@@ -283,24 +288,30 @@ export const mockQueueItems: QueueItem[] = [
 // Mock batch records
 export const mockBatches: BatchRecord[] = [
   {
-    batch_id: 'DM-20260305-1029',
-    window_start: '2026-03-05T07:29:00Z',
-    window_end: '2026-03-05T10:29:00Z',
-    triggered_at: '2026-03-05T10:29:00Z',
+    batch_id: 'DM-20260306-1000',
+    slot_time: '10:00',
+    window_start: '2026-03-06T03:00:00Z',
+    window_end: '2026-03-06T03:00:00Z',
+    triggered_at: '2026-03-06T03:00:12Z',
     triggered_by: 'system',
-    status: 'partial',
+    status: 'running',
     total: 12,
-    success: 7,
-    failed: 2,
-    needs_check: 1,
-    stuck: 1,
-    duration: '8m 23s',
+    success: 5,
+    failed: 1,
+    needs_check: 0,
+    stuck: 0,
+    duration: '—',
+    start_at: '2026-03-06T03:00:12Z',
+    end_at: null,
+    duration_seconds: 271,
+    fetched_count: 12,
   },
   {
-    batch_id: 'DM-20260305-0729',
-    window_start: '2026-03-05T04:29:00Z',
-    window_end: '2026-03-05T07:29:00Z',
-    triggered_at: '2026-03-05T07:29:00Z',
+    batch_id: 'DM-20260306-0700',
+    slot_time: '07:00',
+    window_start: '2026-03-06T00:00:00Z',
+    window_end: '2026-03-06T03:00:00Z',
+    triggered_at: '2026-03-06T00:00:05Z',
     triggered_by: 'system',
     status: 'completed',
     total: 18,
@@ -309,12 +320,17 @@ export const mockBatches: BatchRecord[] = [
     needs_check: 1,
     stuck: 0,
     duration: '12m 05s',
+    start_at: '2026-03-06T00:00:05Z',
+    end_at: '2026-03-06T00:12:10Z',
+    duration_seconds: 725,
+    fetched_count: 18,
   },
   {
-    batch_id: 'DM-20260305-0429',
-    window_start: '2026-03-05T01:29:00Z',
-    window_end: '2026-03-05T04:29:00Z',
-    triggered_at: '2026-03-05T04:29:00Z',
+    batch_id: 'DM-20260305-1900',
+    slot_time: '19:00',
+    window_start: '2026-03-05T09:00:00Z',
+    window_end: '2026-03-05T12:00:00Z',
+    triggered_at: '2026-03-05T12:00:00Z',
     triggered_by: 'system',
     status: 'completed',
     total: 8,
@@ -323,12 +339,17 @@ export const mockBatches: BatchRecord[] = [
     needs_check: 0,
     stuck: 0,
     duration: '5m 12s',
+    start_at: '2026-03-05T12:00:00Z',
+    end_at: '2026-03-05T12:05:12Z',
+    duration_seconds: 312,
+    fetched_count: 8,
   },
   {
-    batch_id: 'DM-20260304-2229',
-    window_start: '2026-03-04T19:29:00Z',
-    window_end: '2026-03-04T22:29:00Z',
-    triggered_at: '2026-03-04T22:29:00Z',
+    batch_id: 'DM-20260305-1600',
+    slot_time: '16:00',
+    window_start: '2026-03-05T06:00:00Z',
+    window_end: '2026-03-05T09:00:00Z',
+    triggered_at: '2026-03-05T09:00:00Z',
     triggered_by: 'system',
     status: 'completed',
     total: 15,
@@ -337,20 +358,29 @@ export const mockBatches: BatchRecord[] = [
     needs_check: 0,
     stuck: 0,
     duration: '9m 47s',
+    start_at: '2026-03-05T09:00:00Z',
+    end_at: '2026-03-05T09:09:47Z',
+    duration_seconds: 587,
+    fetched_count: 15,
   },
   {
-    batch_id: 'DM-20260304-1929',
-    window_start: '2026-03-04T16:29:00Z',
-    window_end: '2026-03-04T19:29:00Z',
-    triggered_at: '2026-03-04T19:30:15Z',
+    batch_id: 'DM-20260305-1300',
+    slot_time: '13:00',
+    window_start: '2026-03-05T03:00:00Z',
+    window_end: '2026-03-05T06:00:00Z',
+    triggered_at: '2026-03-05T06:00:15Z',
     triggered_by: 'manual',
-    status: 'failed',
+    status: 'partial',
     total: 22,
     success: 10,
     failed: 8,
     needs_check: 2,
     stuck: 2,
     duration: '15m 33s',
+    start_at: '2026-03-05T06:00:15Z',
+    end_at: '2026-03-05T06:15:48Z',
+    duration_seconds: 933,
+    fetched_count: 22,
   },
 ];
 
