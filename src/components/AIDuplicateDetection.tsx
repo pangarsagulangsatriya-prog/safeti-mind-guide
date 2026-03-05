@@ -3,7 +3,7 @@ import {
   Copy, ClipboardCheck, Tag, 
   Search, RefreshCw, ChevronRight, Clock,
   Bot, ExternalLink, CheckCircle2,
-  AlertCircle, History, ChevronLeft, Eye, RotateCcw, X
+  AlertCircle, History, ChevronLeft, Eye, EyeOff, RotateCcw, X
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -99,7 +99,7 @@ const AIDuplicateDetection: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('duplicate');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [siteFilter, setSiteFilter] = useState('all');
+  const [siteFilter, setSiteFilter] = useState<string[]>([]);
   const [perusahaanFilter, setPerusahaanFilter] = useState<string[]>([]);
   const [lokasiFilter, setLokasiFilter] = useState<string[]>([]);
   const [detailLokasiFilter, setDetailLokasiFilter] = useState<string[]>([]);
@@ -149,6 +149,7 @@ const AIDuplicateDetection: React.FC = () => {
   const uniquePerusahaan = useMemo(() => [...new Set(mockQueueItems.map(i => i.perusahaan))], []);
   const uniqueLokasi = useMemo(() => [...new Set(mockQueueItems.map(i => i.lokasi))], []);
   const uniqueDetailLokasi = useMemo(() => [...new Set(mockQueueItems.map(i => i.detail_lokasi))], []);
+  const uniqueSite = useMemo(() => [...new Set(mockQueueItems.map(i => i.site))], []);
 
   // Filtered data
   const filteredItems = useMemo(() => {
@@ -161,7 +162,7 @@ const AIDuplicateDetection: React.FC = () => {
         item.pic_perusahaan.toLowerCase().includes(q) ||
         item.lokasi.toLowerCase().includes(q);
       const matchStatus = statusFilter === 'all' || item.status === statusFilter;
-      const matchSite = siteFilter === 'all' || item.site.toLowerCase() === siteFilter;
+      const matchSite = siteFilter.length === 0 || siteFilter.includes(item.site);
       const matchPerusahaan = perusahaanFilter.length === 0 || perusahaanFilter.includes(item.perusahaan);
       const matchLokasi = lokasiFilter.length === 0 || lokasiFilter.includes(item.lokasi);
       const matchDetailLokasi = detailLokasiFilter.length === 0 || detailLokasiFilter.includes(item.detail_lokasi);
@@ -571,22 +572,13 @@ const AIDuplicateDetection: React.FC = () => {
               onChange={setPerusahaanFilter}
             />
 
-            {/* Single-select: Site */}
-            <Select value={siteFilter} onValueChange={setSiteFilter}>
-              <SelectTrigger className="w-auto min-w-[120px] h-9 text-sm gap-1.5">
-                <SelectValue>
-                  {siteFilter === 'all' ? 'Site: Semua' : `Site: ${siteFilter.toUpperCase()}`}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua</SelectItem>
-                <SelectItem value="marine">MARINE</SelectItem>
-                <SelectItem value="lmo">LMO</SelectItem>
-                <SelectItem value="gmo">GMO</SelectItem>
-                <SelectItem value="bmo 1">BMO 1</SelectItem>
-                <SelectItem value="bmo 2">BMO 2</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Multi-select: Site */}
+            <MultiSelectDropdown
+              label="Site"
+              options={uniqueSite}
+              selected={siteFilter}
+              onChange={setSiteFilter}
+            />
 
             {/* Multi-select: Lokasi */}
             <MultiSelectDropdown
@@ -635,19 +627,17 @@ const AIDuplicateDetection: React.FC = () => {
               </SelectContent>
             </Select>
 
-            {/* Error Toggle */}
+            {/* Gagal Toggle */}
             <button
               onClick={() => setErrorMode(prev => !prev)}
-              className={`ml-auto inline-flex items-center gap-2 h-9 px-3 rounded-md border text-sm font-medium transition-all whitespace-nowrap ${
+              className={`ml-auto inline-flex items-center gap-2 h-9 px-3.5 rounded-md border text-sm font-medium transition-all whitespace-nowrap ${
                 errorMode
                   ? 'bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/15'
                   : 'bg-background text-muted-foreground border-input hover:bg-muted/50 hover:text-foreground'
               }`}
             >
-              <span className={`w-7 h-4 rounded-full relative transition-colors ${errorMode ? 'bg-destructive' : 'bg-muted-foreground/30'}`}>
-                <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-transform ${errorMode ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-              </span>
-              Error Saja
+              {errorMode ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              Gagal
             </button>
           </div>
         </div>
@@ -656,7 +646,7 @@ const AIDuplicateDetection: React.FC = () => {
         {(() => {
           const activeFilters: { key: string; label: string; onClear: () => void }[] = [];
           if (perusahaanFilter.length > 0) activeFilters.push({ key: 'perusahaan', label: `Perusahaan: ${perusahaanFilter.length} dipilih`, onClear: () => setPerusahaanFilter([]) });
-          if (siteFilter !== 'all') activeFilters.push({ key: 'site', label: `Site: ${siteFilter.toUpperCase()}`, onClear: () => setSiteFilter('all') });
+          if (siteFilter.length > 0) activeFilters.push({ key: 'site', label: `Site: ${siteFilter.length} dipilih`, onClear: () => setSiteFilter([]) });
           if (lokasiFilter.length > 0) activeFilters.push({ key: 'lokasi', label: `Lokasi: ${lokasiFilter.length} dipilih`, onClear: () => setLokasiFilter([]) });
           if (detailLokasiFilter.length > 0) activeFilters.push({ key: 'detail', label: `Detail Lokasi: ${detailLokasiFilter.length} dipilih`, onClear: () => setDetailLokasiFilter([]) });
           if (statusFilter !== 'all') activeFilters.push({ key: 'status', label: `Status: ${statusDisplayConfig[statusFilter as QueueItemStatus]?.label || statusFilter}`, onClear: () => setStatusFilter('all') });
@@ -664,13 +654,13 @@ const AIDuplicateDetection: React.FC = () => {
             const bOpt = batchDropdownOptions.find(o => o.value === batchFilter);
             activeFilters.push({ key: 'batch', label: `Batch: ${bOpt?.label || batchFilter}`, onClear: () => setBatchFilter('all') });
           }
-          if (errorMode) activeFilters.push({ key: 'error', label: 'Mode: Error Saja', onClear: () => setErrorMode(false) });
+          if (errorMode) activeFilters.push({ key: 'error', label: 'Mode: Gagal', onClear: () => setErrorMode(false) });
           if (searchQuery) activeFilters.push({ key: 'search', label: `Pencarian: "${searchQuery}"`, onClear: () => setSearchQuery('') });
 
           if (activeFilters.length === 0) return null;
 
           const resetAll = () => {
-            setPerusahaanFilter([]); setSiteFilter('all'); setLokasiFilter([]); setDetailLokasiFilter([]);
+            setPerusahaanFilter([]); setSiteFilter([]); setLokasiFilter([]); setDetailLokasiFilter([]);
             setStatusFilter('all'); setBatchFilter('all'); setErrorMode(false); setSearchQuery('');
           };
 
