@@ -46,9 +46,9 @@ const statusConfig = {
     iconBg: 'bg-success/20',
   },
   gagal: {
-    label: 'Gagal',
-    subtitle: 'Butuh pengecekan',
-    tooltip: 'Proses gagal. Silakan cek log atau lakukan tindakan perbaikan.',
+    label: 'Butuh Pengecekan',
+    subtitle: 'Gagal / Stuck / Error',
+    tooltip: 'Proses gagal, tersangkut, atau butuh pengecekan. Silakan retry atau cek log.',
     icon: AlertCircle,
     bgColor: 'bg-destructive/10',
     borderColor: 'border-destructive/30',
@@ -104,26 +104,10 @@ interface PipelineStatusCardsProps {
 const PipelineStatusCards: React.FC<PipelineStatusCardsProps> = ({ stats, onStatusClick }) => {
   return (
     <div className="flex items-center gap-3 flex-wrap">
-      <StatusCard 
-        status="menunggu" 
-        count={stats.menunggu} 
-        onClick={() => onStatusClick?.('menunggu')} 
-      />
-      <StatusCard 
-        status="diproses" 
-        count={stats.diproses} 
-        onClick={() => onStatusClick?.('diproses')} 
-      />
-      <StatusCard 
-        status="selesai" 
-        count={stats.selesai} 
-        onClick={() => onStatusClick?.('selesai')} 
-      />
-      <StatusCard 
-        status="gagal" 
-        count={stats.gagal} 
-        onClick={() => onStatusClick?.('gagal')} 
-      />
+      <StatusCard status="menunggu" count={stats.menunggu} onClick={() => onStatusClick?.('menunggu')} />
+      <StatusCard status="diproses" count={stats.diproses} onClick={() => onStatusClick?.('diproses')} />
+      <StatusCard status="selesai" count={stats.selesai} onClick={() => onStatusClick?.('selesai')} />
+      <StatusCard status="gagal" count={stats.gagal} onClick={() => onStatusClick?.('gagal')} />
     </div>
   );
 };
