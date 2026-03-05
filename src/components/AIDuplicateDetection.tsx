@@ -163,7 +163,7 @@ const AIDuplicateDetection: React.FC = () => {
       const matchPerusahaan = perusahaanFilter === 'all' || item.perusahaan === perusahaanFilter;
       const matchLokasi = lokasiFilter === 'all' || item.lokasi === lokasiFilter;
       const matchDetailLokasi = detailLokasiFilter === 'all' || item.detail_lokasi === detailLokasiFilter;
-      const matchBatch = batchFilter === 'all' || (item.batch_id && item.batch_id.includes(batchFilter));
+      const matchBatch = batchFilter === 'all' || item.batch_id === batchFilter;
       return matchSearch && matchStatus && matchSite && matchPerusahaan && matchLokasi && matchDetailLokasi && matchBatch;
     });
   }, [searchQuery, statusFilter, siteFilter, perusahaanFilter, lokasiFilter, detailLokasiFilter, errorMode, batchFilter]);
@@ -270,14 +270,13 @@ const AIDuplicateDetection: React.FC = () => {
 
   const handleSlotClick = (slot: ScheduleSlot) => {
     if (slot.batchId) {
-      // Find the batch slot_time value to filter
-      const batch = mockBatches.find(b => b.batch_id === slot.batchId);
-      if (batch) {
-        setBatchFilter(batch.slot_time);
-      }
+      setBatchFilter(slot.batchId);
     } else {
-      setBatchFilter(slot.time);
-      toast.info(`Belum ada data batch untuk slot ${slot.time} WIB`);
+      // Upcoming/no data — set a filter that won't match anything
+      setBatchFilter(`no-batch-${slot.time}`);
+      toast.info(`Belum ada data batch untuk slot ${slot.time} WIB`, {
+        description: 'Batch ini belum dieksekusi hari ini.',
+      });
     }
   };
 
@@ -519,11 +518,11 @@ const AIDuplicateDetection: React.FC = () => {
 
         {/* Jadwal Batch - TOP of content area */}
         {activeTab === 'duplicate' && (
-          <div className="mb-4 rounded-lg border border-border bg-card p-3">
+          <div className="mb-4 rounded-lg border border-border bg-card p-3.5">
             <BatchScheduleBar
               slots={scheduleSlots}
               onSlotClick={handleSlotClick}
-              activeSlot={batchFilter !== 'all' ? batchFilter : undefined}
+              activeSlot={batchFilter !== 'all' ? scheduleSlots.find(s => s.batchId === batchFilter || `no-batch-${s.time}` === batchFilter)?.time : undefined}
             />
           </div>
         )}
