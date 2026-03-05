@@ -85,11 +85,14 @@ const BatchScheduleBar: React.FC<BatchScheduleBarProps> = ({ slots, onSlotClick,
 
             const chipClasses = cn(
               'relative flex items-center gap-1.5 px-3.5 py-2 rounded-lg border text-xs font-semibold transition-all duration-200 cursor-pointer',
-              isDone && 'bg-emerald-500/8 text-emerald-600 border-emerald-500/25 hover:bg-emerald-500/15 hover:border-emerald-500/40 dark:text-emerald-400 dark:border-emerald-400/25',
-              isRunning && 'bg-blue-500/8 text-blue-600 border-blue-500/25 hover:bg-blue-500/15 hover:border-blue-500/40 dark:text-blue-400 dark:border-blue-400/25 shadow-sm shadow-blue-500/10',
-              isUpcoming && 'bg-muted/60 text-muted-foreground/60 border-border/60 hover:bg-muted hover:text-muted-foreground hover:border-border',
-              isMissed && 'bg-amber-500/8 text-amber-600 border-amber-500/25 hover:bg-amber-500/15 dark:text-amber-400',
-              isActive && 'ring-2 ring-primary/30 ring-offset-1 ring-offset-background',
+              isDone && !isActive && 'bg-emerald-500/8 text-emerald-600 border-emerald-500/25 hover:bg-emerald-500/15 hover:border-emerald-500/40 dark:text-emerald-400 dark:border-emerald-400/25',
+              isRunning && !isActive && 'bg-blue-500/8 text-blue-600 border-blue-500/25 hover:bg-blue-500/15 hover:border-blue-500/40 dark:text-blue-400 dark:border-blue-400/25 shadow-sm shadow-blue-500/10',
+              isUpcoming && !isActive && 'bg-muted/60 text-muted-foreground/60 border-border/60 hover:bg-muted hover:text-muted-foreground hover:border-border',
+              isMissed && !isActive && 'bg-amber-500/8 text-amber-600 border-amber-500/25 hover:bg-amber-500/15 dark:text-amber-400',
+              isActive && isDone && 'bg-emerald-500/20 text-emerald-700 border-emerald-500/50 ring-2 ring-emerald-500/30 ring-offset-1 ring-offset-background shadow-sm dark:text-emerald-300',
+              isActive && isRunning && 'bg-blue-500/20 text-blue-700 border-blue-500/50 ring-2 ring-blue-500/30 ring-offset-1 ring-offset-background shadow-sm dark:text-blue-300',
+              isActive && isUpcoming && 'bg-muted text-foreground border-foreground/20 ring-2 ring-foreground/20 ring-offset-1 ring-offset-background',
+              isActive && isMissed && 'bg-amber-500/20 text-amber-700 border-amber-500/50 ring-2 ring-amber-500/30 ring-offset-1 ring-offset-background',
             );
 
             const chip = (
