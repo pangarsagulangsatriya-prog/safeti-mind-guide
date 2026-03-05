@@ -6,6 +6,11 @@ import {
   AlertCircle, ChevronLeft, Eye, EyeOff, RotateCcw, X, ArrowUpDown, CalendarDays, ChevronDown
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -619,35 +624,42 @@ const AIDuplicateDetection: React.FC = () => {
         {activeTab === 'duplicate' && (
           <div className="mb-4 rounded-lg border border-border bg-card p-3.5">
             <div className="flex items-center gap-3 flex-wrap">
-              {/* Date Filter */}
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Tanggal</span>
-                <div className="flex items-center gap-1">
-                  {DATE_OPTIONS.map(opt => {
-                    const isActive = dateFilter === opt.value;
-                    return (
-                      <TooltipProvider key={opt.value} delayDuration={200}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={() => { setDateFilter(opt.value); setBatchFilter('all'); }}
-                              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                                isActive
-                                  ? 'bg-primary/10 text-primary border-primary/30 ring-2 ring-primary/20 ring-offset-1 ring-offset-background shadow-sm'
-                                  : 'bg-muted/60 text-muted-foreground/70 border-border/60 hover:bg-muted hover:text-muted-foreground hover:border-border'
-                              }`}
-                            >
-                              <CalendarDays className="w-3.5 h-3.5" />
-                              <span className="tabular-nums">{opt.label}</span>
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom" className="text-xs">{opt.sublabel}</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    );
-                  })}
-                </div>
-              </div>
+              {/* Date Filter - Airbnb style dropdown */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-background hover:bg-muted/50 text-sm font-medium transition-all cursor-pointer shadow-sm">
+                    <CalendarDays className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-foreground">{DATE_OPTIONS.find(o => o.value === dateFilter)?.label || 'Hari ini'}</span>
+                    <span className="text-muted-foreground/60 text-xs">{DATE_OPTIONS.find(o => o.value === dateFilter)?.sublabel}</span>
+                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/50" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-[220px] p-1.5">
+                  <div className="space-y-0.5">
+                    {DATE_OPTIONS.map(opt => {
+                      const isActive = dateFilter === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          onClick={() => { setDateFilter(opt.value); setBatchFilter('all'); }}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors ${
+                            isActive
+                              ? 'bg-primary/10 text-primary font-medium'
+                              : 'text-foreground hover:bg-muted'
+                          }`}
+                        >
+                          <CalendarDays className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-muted-foreground/50'}`} />
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">{opt.label}</span>
+                            <span className="text-[11px] text-muted-foreground">{opt.sublabel}</span>
+                          </div>
+                          {isActive && <CheckCircle2 className="w-4 h-4 text-primary ml-auto" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </PopoverContent>
+              </Popover>
 
               {/* Separator */}
               <div className="h-6 w-px bg-border/60" />
