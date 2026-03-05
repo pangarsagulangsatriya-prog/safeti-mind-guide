@@ -57,13 +57,13 @@ const StatusCard: React.FC<StatusCardProps> = ({ status, count, onClick, active 
           <button
             onClick={onClick}
             className={cn(
-              'flex items-center gap-3 px-4 py-3 rounded-lg border transition-all cursor-pointer',
+              'flex items-center gap-3 px-4 py-3 rounded-lg border transition-all cursor-pointer min-h-[72px]',
               active
                 ? 'border-foreground/20 bg-foreground/5 shadow-sm'
                 : 'border-border bg-card hover:shadow-sm hover:bg-muted/50'
             )}
           >
-            <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
               <Icon className={cn('w-4 h-4 text-muted-foreground', status === 'diproses' && 'animate-spin')} />
             </div>
             <div className="text-left">
@@ -95,20 +95,20 @@ interface PipelineStatusCardsProps {
 
 const PipelineStatusCards: React.FC<PipelineStatusCardsProps> = ({ stats, onStatusClick, activeFilter }) => {
   return (
-    <div className="flex items-center gap-3 flex-wrap">
+    <div className="grid grid-cols-5 gap-3">
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
             <button
               onClick={() => onStatusClick?.('all')}
               className={cn(
-                'flex items-center gap-3 px-4 py-3 rounded-lg border transition-all cursor-pointer',
+                'flex items-center gap-3 px-4 py-3 rounded-lg border transition-all cursor-pointer min-h-[72px]',
                 activeFilter === 'all' || !activeFilter
                   ? 'border-foreground/20 bg-foreground/5 shadow-sm'
                   : 'border-border bg-card hover:shadow-sm hover:bg-muted/50'
               )}
             >
-              <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
                 <span className="text-sm font-bold text-muted-foreground">#</span>
               </div>
               <div className="text-left">

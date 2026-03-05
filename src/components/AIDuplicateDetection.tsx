@@ -95,6 +95,9 @@ const AIDuplicateDetection: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [siteFilter, setSiteFilter] = useState('all');
+  const [perusahaanFilter, setPerusahaanFilter] = useState('all');
+  const [lokasiFilter, setLokasiFilter] = useState('all');
+  const [detailLokasiFilter, setDetailLokasiFilter] = useState('all');
   const [batchFilter, setBatchFilter] = useState('all');
 
   // Batch time options (WIB)
@@ -149,23 +152,32 @@ const AIDuplicateDetection: React.FC = () => {
     });
   };
 
+  // Unique values for filters
+  const uniquePerusahaan = useMemo(() => [...new Set(mockQueueItems.map(i => i.perusahaan))], []);
+  const uniqueLokasi = useMemo(() => [...new Set(mockQueueItems.map(i => i.lokasi))], []);
+  const uniqueDetailLokasi = useMemo(() => [...new Set(mockQueueItems.map(i => i.detail_lokasi))], []);
+
   // Filtered data
   const filteredItems = useMemo(() => {
     return mockQueueItems.filter(item => {
       if (errorMode && item.status !== 'gagal') return false;
+      const q = searchQuery.toLowerCase();
       const matchSearch = !searchQuery ||
-        item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.pelapor.toLowerCase().includes(searchQuery.toLowerCase());
+        item.id.toLowerCase().includes(q) ||
+        item.pelapor.toLowerCase().includes(q) ||
+        item.pic_perusahaan.toLowerCase().includes(q);
       const matchStatus = statusFilter === 'all' || item.status === statusFilter;
       const matchSite = siteFilter === 'all' || item.site.toLowerCase() === siteFilter;
-      // Batch filter: match by batch_id or time
+      const matchPerusahaan = perusahaanFilter === 'all' || item.perusahaan === perusahaanFilter;
+      const matchLokasi = lokasiFilter === 'all' || item.lokasi === lokasiFilter;
+      const matchDetailLokasi = detailLokasiFilter === 'all' || item.detail_lokasi === detailLokasiFilter;
       const matchBatch = batchFilter === 'all' || (item.batch_id && item.batch_id.includes(batchFilter));
-      return matchSearch && matchStatus && matchSite && matchBatch;
+      return matchSearch && matchStatus && matchSite && matchPerusahaan && matchLokasi && matchDetailLokasi && matchBatch;
     });
-  }, [searchQuery, statusFilter, siteFilter, errorMode, batchFilter]);
+  }, [searchQuery, statusFilter, siteFilter, perusahaanFilter, lokasiFilter, detailLokasiFilter, errorMode, batchFilter]);
 
   // Reset page on filter change
-  useEffect(() => { setCurrentPage(1); clearSelection(); }, [searchQuery, statusFilter, siteFilter, activeTab, errorMode, batchFilter]);
+  useEffect(() => { setCurrentPage(1); clearSelection(); }, [searchQuery, statusFilter, siteFilter, perusahaanFilter, lokasiFilter, detailLokasiFilter, activeTab, errorMode, batchFilter]);
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
@@ -285,8 +297,11 @@ const AIDuplicateDetection: React.FC = () => {
             <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">ID</TableHead>
             <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">Timestamp</TableHead>
             <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">Pelapor</TableHead>
+            <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">Perusahaan</TableHead>
+            <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">PIC Perusahaan</TableHead>
             <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">Site</TableHead>
             <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">Lokasi</TableHead>
+            <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">Detail Lokasi</TableHead>
             <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">Status</TableHead>
             <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider text-right">Aksi</TableHead>
           </TableRow>
@@ -294,7 +309,7 @@ const AIDuplicateDetection: React.FC = () => {
         <TableBody>
           {paginatedItems.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={errorMode ? 8 : 7} className="text-center py-12 text-muted-foreground">
+              <TableCell colSpan={errorMode ? 12 : 11} className="text-center py-12 text-muted-foreground">
                 <div className="flex flex-col items-center gap-2">
                   <Search className="w-5 h-5 text-muted-foreground/50" />
                   <span>{errorMode ? 'Tidak ada item gagal pada rentang waktu ini.' : 'Tidak ada item ditemukan.'}</span>
@@ -316,12 +331,13 @@ const AIDuplicateDetection: React.FC = () => {
                   </TableCell>
                 )}
                 <TableCell className="font-mono text-sm font-medium text-foreground">{item.id}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{item.timestamp}</TableCell>
+                <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{item.timestamp}</TableCell>
                 <TableCell className="text-sm font-medium text-foreground">{item.pelapor}</TableCell>
-                <TableCell>
-                  <span className="text-sm text-muted-foreground">{item.site}</span>
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground max-w-[180px] truncate">{item.lokasi}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{item.perusahaan}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{item.pic_perusahaan}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{item.site}</TableCell>
+                <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">{item.lokasi}</TableCell>
+                <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">{item.detail_lokasi}</TableCell>
                 <TableCell>
                   <QueueStatusBadge status={item.status} />
                 </TableCell>
@@ -518,16 +534,30 @@ const AIDuplicateDetection: React.FC = () => {
           </div>
         )}
 
-        {/* Filter Bar - below time window, above cards */}
+        {/* Pipeline Status Cards */}
         <div className="mb-4">
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="relative flex-1 min-w-[200px] max-w-xs">
+          <PipelineStatusCards stats={currentStats} onStatusClick={handleStatusCardClick} activeFilter={statusFilter} />
+        </div>
+
+        {/* Filter Bar - below cards, above table */}
+        <div className="mb-4">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative min-w-[200px] max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Cari ID / Pelapor..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+              <Input placeholder="Cari ID / Pelapor / PIC..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
             </div>
             <div className="flex items-center gap-1 text-muted-foreground"><Filter className="w-4 h-4" /></div>
+            <Select value={perusahaanFilter} onValueChange={setPerusahaanFilter}>
+              <SelectTrigger className="w-[150px]"><SelectValue placeholder="Perusahaan" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Perusahaan</SelectItem>
+                {uniquePerusahaan.map(p => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={siteFilter} onValueChange={setSiteFilter}>
-              <SelectTrigger className="w-[130px]"><SelectValue placeholder="Semua Site" /></SelectTrigger>
+              <SelectTrigger className="w-[120px]"><SelectValue placeholder="Site" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Site</SelectItem>
                 <SelectItem value="marine">MARINE</SelectItem>
@@ -537,8 +567,26 @@ const AIDuplicateDetection: React.FC = () => {
                 <SelectItem value="bmo 2">BMO 2</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={lokasiFilter} onValueChange={setLokasiFilter}>
+              <SelectTrigger className="w-[150px]"><SelectValue placeholder="Lokasi" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Lokasi</SelectItem>
+                {uniqueLokasi.map(l => (
+                  <SelectItem key={l} value={l}>{l}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={detailLokasiFilter} onValueChange={setDetailLokasiFilter}>
+              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Detail Lokasi" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Detail Lokasi</SelectItem>
+                {uniqueDetailLokasi.map(d => (
+                  <SelectItem key={d} value={d}>{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Status</SelectItem>
                 <SelectItem value="menunggu">Menunggu</SelectItem>
@@ -548,7 +596,7 @@ const AIDuplicateDetection: React.FC = () => {
               </SelectContent>
             </Select>
             <Select value={batchFilter} onValueChange={setBatchFilter}>
-              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Semua Batch" /></SelectTrigger>
+              <SelectTrigger className="w-[150px]"><SelectValue placeholder="Batch" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Batch</SelectItem>
                 {batchTimeOptions.map(time => (
@@ -569,11 +617,6 @@ const AIDuplicateDetection: React.FC = () => {
               {errorMode && <span className="ml-2 text-xs text-muted-foreground">Menampilkan item dengan status Gagal.</span>}
             </div>
           </div>
-        </div>
-
-        {/* Pipeline Status Cards */}
-        <div className="mb-4">
-          <PipelineStatusCards stats={currentStats} onStatusClick={handleStatusCardClick} activeFilter={statusFilter} />
         </div>
 
         {/* Bulk Action Bar */}
