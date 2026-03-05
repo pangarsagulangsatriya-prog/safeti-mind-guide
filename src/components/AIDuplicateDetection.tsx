@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Copy, ClipboardCheck, Tag, 
-  Search, RefreshCw, ChevronRight, Clock,
+  Search, RefreshCw, ChevronRight, Clock, ChevronsLeft, ChevronsRight,
   Bot, ExternalLink, CheckCircle2,
-  AlertCircle, History, ChevronLeft, Eye, EyeOff, RotateCcw, X
+  AlertCircle, History, ChevronLeft, Eye, EyeOff, RotateCcw, X, ArrowUpDown
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -92,7 +92,8 @@ const QueueStatusBadge = ({ status }: { status: QueueItemStatus }) => {
   );
 };
 
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE_OPTIONS = [10, 20, 50];
+const DEFAULT_ITEMS_PER_PAGE = 10;
 
 const AIDuplicateDetection: React.FC = () => {
   const navigate = useNavigate();
@@ -106,6 +107,7 @@ const AIDuplicateDetection: React.FC = () => {
   const [batchFilter, setBatchFilter] = useState('all');
 
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_ITEMS_PER_PAGE);
   const [errorMode, setErrorMode] = useState(false);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -173,8 +175,8 @@ const AIDuplicateDetection: React.FC = () => {
 
   useEffect(() => { setCurrentPage(1); clearSelection(); }, [searchQuery, statusFilter, siteFilter, perusahaanFilter, lokasiFilter, detailLokasiFilter, activeTab, errorMode, batchFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
-  const paginatedItems = filteredItems.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const paginatedItems = filteredItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const currentStats = useMemo(() => ({
     total: filteredItems.length,
@@ -292,142 +294,240 @@ const AIDuplicateDetection: React.FC = () => {
         : '⏳';
       return {
         value: batch ? batch.batch_id : `no-batch-${time}`,
-        label: `${statusLabel} ${time} WIB${batch ? ` (${batch.batch_id})` : ''}`,
-        displayLabel: `${statusLabel} ${time} WIB`,
+        label: `${statusLabel} ${time} WIB`,
       };
     });
   }, []);
 
+  // Pagination helpers
+  const paginationRange = useMemo(() => {
+    const range: (number | 'ellipsis')[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) range.push(i);
+    } else {
+      range.push(1);
+      if (currentPage > 3) range.push('ellipsis');
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) range.push(i);
+      if (currentPage < totalPages - 2) range.push('ellipsis');
+      range.push(totalPages);
+    }
+    return range;
+  }, [totalPages, currentPage]);
+
+  const headerCellClass = "font-medium text-muted-foreground text-[11px] uppercase tracking-wider py-3 px-3 bg-muted/50 border-b border-border sticky top-0 z-[1]";
+  const cellClass = "py-2.5 px-3 text-[13px] border-b border-border/40";
+
+  const TruncatedCell = ({ text, maxW = 'max-w-[140px]' }: { text: string; maxW?: string }) => (
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className={`block truncate ${maxW}`}>{text}</span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[300px] text-xs">{text}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+
   const renderTable = () => (
-    <div className="rounded-lg border border-border bg-card overflow-hidden">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-muted/40 hover:bg-muted/40">
-            {errorMode && (
-              <TableHead className="w-10">
-                <Checkbox
-                  checked={allVisibleSelected}
-                  onCheckedChange={toggleSelectAll}
-                  aria-label="Select all"
-                />
+    <div className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              {errorMode && (
+                <TableHead className={`${headerCellClass} w-10`}>
+                  <Checkbox
+                    checked={allVisibleSelected}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Select all"
+                  />
+                </TableHead>
+              )}
+              <TableHead className={`${headerCellClass} min-w-[90px]`}>
+                <span className="inline-flex items-center gap-1 group cursor-default">ID <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-40 transition-opacity" /></span>
               </TableHead>
-            )}
-            <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">ID</TableHead>
-            <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">Timestamp</TableHead>
-            <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">Pelapor</TableHead>
-            <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">Perusahaan</TableHead>
-            <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">PIC Perusahaan</TableHead>
-            <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">Site</TableHead>
-            <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">Lokasi</TableHead>
-            <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">Detail Lokasi</TableHead>
-            <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider">Status</TableHead>
-            <TableHead className="font-semibold text-foreground text-xs uppercase tracking-wider text-right">Aksi</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {paginatedItems.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={errorMode ? 12 : 11} className="text-center py-12 text-muted-foreground">
-                <div className="flex flex-col items-center gap-2">
-                  <Search className="w-5 h-5 text-muted-foreground/50" />
-                  <span>{errorMode ? 'Tidak ada item gagal pada rentang waktu ini.' : 'Tidak ada item ditemukan.'}</span>
-                </div>
-              </TableCell>
+              <TableHead className={`${headerCellClass} min-w-[110px]`}>
+                <span className="inline-flex items-center gap-1 group cursor-default">Waktu <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-40 transition-opacity" /></span>
+              </TableHead>
+              <TableHead className={`${headerCellClass} min-w-[120px]`}>
+                <span className="inline-flex items-center gap-1 group cursor-default">Pelapor <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-40 transition-opacity" /></span>
+              </TableHead>
+              <TableHead className={`${headerCellClass} min-w-[130px]`}>
+                <span className="inline-flex items-center gap-1 group cursor-default">Perusahaan <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-40 transition-opacity" /></span>
+              </TableHead>
+              <TableHead className={`${headerCellClass} min-w-[120px]`}>
+                <span className="inline-flex items-center gap-1 group cursor-default">PIC <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-40 transition-opacity" /></span>
+              </TableHead>
+              <TableHead className={`${headerCellClass} min-w-[70px]`}>
+                <span className="inline-flex items-center gap-1 group cursor-default">Site <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-40 transition-opacity" /></span>
+              </TableHead>
+              <TableHead className={`${headerCellClass} min-w-[130px]`}>
+                <span className="inline-flex items-center gap-1 group cursor-default">Lokasi <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-40 transition-opacity" /></span>
+              </TableHead>
+              <TableHead className={`${headerCellClass} min-w-[130px]`}>
+                <span className="inline-flex items-center gap-1 group cursor-default">Detail Lokasi <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-40 transition-opacity" /></span>
+              </TableHead>
+              <TableHead className={`${headerCellClass} min-w-[100px]`}>Status</TableHead>
+              <TableHead className={`${headerCellClass} min-w-[120px] text-right`}>Aksi</TableHead>
             </TableRow>
-          ) : (
-            paginatedItems.map((item) => (
-              <TableRow
-                key={item.id}
-                className={`transition-colors ${selectedIds.has(item.id) ? 'bg-primary/5' : 'hover:bg-muted/20'}`}
-              >
-                {errorMode && (
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedIds.has(item.id)}
-                      onCheckedChange={() => toggleSelect(item.id)}
-                    />
-                  </TableCell>
-                )}
-                <TableCell className="font-mono text-sm font-medium text-foreground">{item.id}</TableCell>
-                <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{item.timestamp}</TableCell>
-                <TableCell className="text-sm font-medium text-foreground">{item.pelapor}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{item.perusahaan}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{item.pic_perusahaan}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{item.site}</TableCell>
-                <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">{item.lokasi}</TableCell>
-                <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">{item.detail_lokasi}</TableCell>
-                <TableCell>
-                  <QueueStatusBadge status={item.status} />
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-1.5">
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground" onClick={() => handleViewItem(item)}>
-                      <Eye className="w-3.5 h-3.5" />
-                      View
+          </TableHeader>
+          <TableBody>
+            {paginatedItems.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={errorMode ? 11 : 10} className="text-center py-16">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                      <Search className="w-5 h-5 text-muted-foreground/40" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        {errorMode ? 'Tidak ada item gagal.' : 'Tidak ada data untuk filter ini.'}
+                      </p>
+                      <p className="text-xs text-muted-foreground/60">Coba ubah atau reset filter untuk melihat data lain.</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs mt-1"
+                      onClick={() => {
+                        setPerusahaanFilter([]); setSiteFilter([]); setLokasiFilter([]); setDetailLokasiFilter([]);
+                        setStatusFilter('all'); setBatchFilter('all'); setErrorMode(false); setSearchQuery('');
+                      }}
+                    >
+                      Reset Filter
                     </Button>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 px-2 text-xs gap-1"
-                              disabled={item.status !== 'gagal'}
-                              onClick={() => handleRetrySingle(item)}
-                            >
-                              <RotateCcw className="w-3.5 h-3.5" />
-                              Retry
-                            </Button>
-                          </span>
-                        </TooltipTrigger>
-                        {item.status !== 'gagal' && (
-                          <TooltipContent>Retry hanya tersedia untuk status Gagal.</TooltipContent>
-                        )}
-                      </Tooltip>
-                    </TooltipProvider>
                   </div>
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ) : (
+              paginatedItems.map((item, idx) => (
+                <TableRow
+                  key={item.id}
+                  className={`transition-colors ${
+                    selectedIds.has(item.id)
+                      ? 'bg-primary/5 border-l-2 border-l-primary'
+                      : idx % 2 === 1
+                        ? 'bg-muted/[0.03] hover:bg-muted/30'
+                        : 'hover:bg-muted/30'
+                  }`}
+                >
+                  {errorMode && (
+                    <TableCell className={cellClass}>
+                      <Checkbox
+                        checked={selectedIds.has(item.id)}
+                        onCheckedChange={() => toggleSelect(item.id)}
+                      />
+                    </TableCell>
+                  )}
+                  <TableCell className={`${cellClass} font-mono text-xs font-semibold text-foreground`}>{item.id}</TableCell>
+                  <TableCell className={`${cellClass} text-muted-foreground whitespace-nowrap text-xs`}>{item.timestamp}</TableCell>
+                  <TableCell className={`${cellClass} font-medium text-foreground text-xs`}>{item.pelapor}</TableCell>
+                  <TableCell className={`${cellClass} text-muted-foreground text-xs`}>
+                    <TruncatedCell text={item.perusahaan} maxW="max-w-[130px]" />
+                  </TableCell>
+                  <TableCell className={`${cellClass} text-muted-foreground text-xs`}>
+                    <TruncatedCell text={item.pic_perusahaan} maxW="max-w-[120px]" />
+                  </TableCell>
+                  <TableCell className={`${cellClass} text-muted-foreground text-xs font-medium`}>{item.site}</TableCell>
+                  <TableCell className={`${cellClass} text-muted-foreground text-xs`}>
+                    <TruncatedCell text={item.lokasi} />
+                  </TableCell>
+                  <TableCell className={`${cellClass} text-muted-foreground text-xs`}>
+                    <TruncatedCell text={item.detail_lokasi} />
+                  </TableCell>
+                  <TableCell className={cellClass}>
+                    <QueueStatusBadge status={item.status} />
+                  </TableCell>
+                  <TableCell className={`${cellClass} text-right`}>
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => handleViewItem(item)}
+                        className="inline-flex items-center gap-1 h-7 px-2 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/50"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Lihat</span>
+                      </button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-2 text-xs gap-1"
+                                disabled={item.status !== 'gagal'}
+                                onClick={() => handleRetrySingle(item)}
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                                Retry
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          {item.status !== 'gagal' && (
+                            <TooltipContent>Retry hanya tersedia untuk status Gagal.</TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
       {/* Pagination */}
-      <div className="px-4 py-3 border-t border-border flex items-center justify-between bg-muted/20">
-        <span className="text-sm text-muted-foreground">
-          {filteredItems.length === 0 ? '0 item' : `${(currentPage - 1) * ITEMS_PER_PAGE + 1}–${Math.min(currentPage * ITEMS_PER_PAGE, filteredItems.length)} dari ${filteredItems.length}`}
-        </span>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={currentPage <= 1}
-            onClick={() => setCurrentPage(p => p - 1)}
-            className="h-8 w-8 p-0"
-          >
-            <ChevronLeft className="w-4 h-4" />
+      <div className="px-4 py-2.5 border-t border-border flex items-center justify-between bg-muted/20">
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground">
+            {filteredItems.length === 0
+              ? '0 item'
+              : `Menampilkan ${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, filteredItems.length)} dari ${filteredItems.length}`}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground/60">Per halaman:</span>
+            <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1); }}>
+              <SelectTrigger className="h-7 w-[60px] text-xs border-border/60">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ITEMS_PER_PAGE_OPTIONS.map(n => (
+                  <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="flex items-center gap-0.5">
+          <Button variant="ghost" size="sm" disabled={currentPage <= 1} onClick={() => setCurrentPage(1)} className="h-7 w-7 p-0">
+            <ChevronsLeft className="w-3.5 h-3.5" />
           </Button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-            <Button
-              key={page}
-              variant={page === currentPage ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setCurrentPage(page)}
-              className="h-8 w-8 p-0 text-xs"
-            >
-              {page}
-            </Button>
-          ))}
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={currentPage >= totalPages}
-            onClick={() => setCurrentPage(p => p + 1)}
-            className="h-8 w-8 p-0"
-          >
-            <ChevronRight className="w-4 h-4" />
+          <Button variant="ghost" size="sm" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)} className="h-7 w-7 p-0">
+            <ChevronLeft className="w-3.5 h-3.5" />
+          </Button>
+          {paginationRange.map((item, i) =>
+            item === 'ellipsis' ? (
+              <span key={`e-${i}`} className="px-1 text-xs text-muted-foreground/40">…</span>
+            ) : (
+              <Button
+                key={item}
+                variant={item === currentPage ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setCurrentPage(item as number)}
+                className="h-7 w-7 p-0 text-xs"
+              >
+                {item}
+              </Button>
+            )
+          )}
+          <Button variant="ghost" size="sm" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)} className="h-7 w-7 p-0">
+            <ChevronRight className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="ghost" size="sm" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(totalPages)} className="h-7 w-7 p-0">
+            <ChevronsRight className="w-3.5 h-3.5" />
           </Button>
         </div>
       </div>
