@@ -455,61 +455,6 @@ const AIDuplicateDetection: React.FC = () => {
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="border-b border-border bg-card/30">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="relative flex-1 min-w-[200px] max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Cari ID / Pelapor..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
-            </div>
-            <div className="flex items-center gap-1 text-muted-foreground"><Filter className="w-4 h-4" /></div>
-            <Select value={siteFilter} onValueChange={setSiteFilter}>
-              <SelectTrigger className="w-[130px]"><SelectValue placeholder="Semua Site" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Site</SelectItem>
-                <SelectItem value="marine">MARINE</SelectItem>
-                <SelectItem value="lmo">LMO</SelectItem>
-                <SelectItem value="gmo">GMO</SelectItem>
-                <SelectItem value="bmo 1">BMO 1</SelectItem>
-                <SelectItem value="bmo 2">BMO 2</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Status</SelectItem>
-                <SelectItem value="menunggu">Menunggu</SelectItem>
-                <SelectItem value="diproses">Diproses</SelectItem>
-                <SelectItem value="sukses">Berhasil</SelectItem>
-                <SelectItem value="gagal">Gagal</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={batchFilter} onValueChange={setBatchFilter}>
-              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Semua Batch" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Batch</SelectItem>
-                {batchTimeOptions.map(time => (
-                  <SelectItem key={time} value={time}>Batch {time} WIB</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="ml-auto">
-              <Button
-                variant={errorMode ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setErrorMode(prev => !prev)}
-                className="gap-1.5 text-xs"
-              >
-                {errorMode ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-                Tampilkan Error Saja
-              </Button>
-              {errorMode && <span className="ml-2 text-xs text-muted-foreground">Menampilkan item dengan status Gagal.</span>}
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="container mx-auto px-4 py-4">
         {/* Step Header - Title only, no subtitle */}
@@ -572,6 +517,59 @@ const AIDuplicateDetection: React.FC = () => {
             <p className="text-xs text-muted-foreground pl-1">Proses dilakukan setelah Form Checker selesai</p>
           </div>
         )}
+
+        {/* Filter Bar - below time window, above cards */}
+        <div className="mb-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-[200px] max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input placeholder="Cari ID / Pelapor..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+            </div>
+            <div className="flex items-center gap-1 text-muted-foreground"><Filter className="w-4 h-4" /></div>
+            <Select value={siteFilter} onValueChange={setSiteFilter}>
+              <SelectTrigger className="w-[130px]"><SelectValue placeholder="Semua Site" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Site</SelectItem>
+                <SelectItem value="marine">MARINE</SelectItem>
+                <SelectItem value="lmo">LMO</SelectItem>
+                <SelectItem value="gmo">GMO</SelectItem>
+                <SelectItem value="bmo 1">BMO 1</SelectItem>
+                <SelectItem value="bmo 2">BMO 2</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Status</SelectItem>
+                <SelectItem value="menunggu">Menunggu</SelectItem>
+                <SelectItem value="diproses">Diproses</SelectItem>
+                <SelectItem value="sukses">Berhasil</SelectItem>
+                <SelectItem value="gagal">Gagal</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={batchFilter} onValueChange={setBatchFilter}>
+              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Semua Batch" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Batch</SelectItem>
+                {batchTimeOptions.map(time => (
+                  <SelectItem key={time} value={time}>Batch {time} WIB</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="ml-auto">
+              <Button
+                variant={errorMode ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setErrorMode(prev => !prev)}
+                className="gap-1.5 text-xs"
+              >
+                {errorMode ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                Tampilkan Error Saja
+              </Button>
+              {errorMode && <span className="ml-2 text-xs text-muted-foreground">Menampilkan item dengan status Gagal.</span>}
+            </div>
+          </div>
+        </div>
 
         {/* Pipeline Status Cards */}
         <div className="mb-4">
