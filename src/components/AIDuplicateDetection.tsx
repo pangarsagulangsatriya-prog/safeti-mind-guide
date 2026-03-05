@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Copy, ClipboardCheck, Tag, 
-  Search, RefreshCw, ChevronRight, Filter, Clock,
+  Search, RefreshCw, ChevronRight, Clock,
   Bot, ExternalLink, CheckCircle2,
-  AlertCircle, History, ChevronLeft, Eye, RotateCcw, ToggleLeft, ToggleRight
+  AlertCircle, History, ChevronLeft, Eye, RotateCcw, X
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -38,6 +38,7 @@ import RetryModal, { RetryConfig } from './RetryModal';
 import ErrorDetailsDrawer from './ErrorDetailsDrawer';
 import BatchHistoryDrawer from './BatchHistoryDrawer';
 import BatchScheduleBar, { ScheduleSlot } from './BatchScheduleBar';
+import MultiSelectDropdown from './MultiSelectDropdown';
 
 import {
   QueueItem, QueueItemStatus, statusDisplayConfig,
@@ -99,9 +100,9 @@ const AIDuplicateDetection: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [siteFilter, setSiteFilter] = useState('all');
-  const [perusahaanFilter, setPerusahaanFilter] = useState('all');
-  const [lokasiFilter, setLokasiFilter] = useState('all');
-  const [detailLokasiFilter, setDetailLokasiFilter] = useState('all');
+  const [perusahaanFilter, setPerusahaanFilter] = useState<string[]>([]);
+  const [lokasiFilter, setLokasiFilter] = useState<string[]>([]);
+  const [detailLokasiFilter, setDetailLokasiFilter] = useState<string[]>([]);
   const [batchFilter, setBatchFilter] = useState('all');
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -157,12 +158,13 @@ const AIDuplicateDetection: React.FC = () => {
       const matchSearch = !searchQuery ||
         item.id.toLowerCase().includes(q) ||
         item.pelapor.toLowerCase().includes(q) ||
-        item.pic_perusahaan.toLowerCase().includes(q);
+        item.pic_perusahaan.toLowerCase().includes(q) ||
+        item.lokasi.toLowerCase().includes(q);
       const matchStatus = statusFilter === 'all' || item.status === statusFilter;
       const matchSite = siteFilter === 'all' || item.site.toLowerCase() === siteFilter;
-      const matchPerusahaan = perusahaanFilter === 'all' || item.perusahaan === perusahaanFilter;
-      const matchLokasi = lokasiFilter === 'all' || item.lokasi === lokasiFilter;
-      const matchDetailLokasi = detailLokasiFilter === 'all' || item.detail_lokasi === detailLokasiFilter;
+      const matchPerusahaan = perusahaanFilter.length === 0 || perusahaanFilter.includes(item.perusahaan);
+      const matchLokasi = lokasiFilter.length === 0 || lokasiFilter.includes(item.lokasi);
+      const matchDetailLokasi = detailLokasiFilter.length === 0 || detailLokasiFilter.includes(item.detail_lokasi);
       const matchBatch = batchFilter === 'all' || item.batch_id === batchFilter;
       return matchSearch && matchStatus && matchSite && matchPerusahaan && matchLokasi && matchDetailLokasi && matchBatch;
     });
@@ -282,20 +284,15 @@ const AIDuplicateDetection: React.FC = () => {
 
   // Build meaningful batch dropdown options
   const batchDropdownOptions = useMemo(() => {
-    const todayBatches = mockBatches.filter(b => {
-      const d = new Date(b.start_at);
-      const today = new Date();
-      return d.toDateString() === today.toDateString();
-    });
-    // Include all slots
     return SCHEDULE_SLOTS.map(time => {
       const batch = mockBatches.find(b => b.slot_time === time);
       const statusLabel = batch ? 
         (batch.status === 'running' ? '🔄' : batch.status === 'completed' ? '✅' : batch.status === 'partial' ? '⚠️' : '❌') 
         : '⏳';
       return {
-        value: time,
+        value: batch ? batch.batch_id : `no-batch-${time}`,
         label: `${statusLabel} ${time} WIB${batch ? ` (${batch.batch_id})` : ''}`,
+        displayLabel: `${statusLabel} ${time} WIB`,
       };
     });
   }, []);
@@ -553,26 +550,36 @@ const AIDuplicateDetection: React.FC = () => {
         </div>
 
         {/* Filter Bar */}
-        <div className="mb-4">
+        <div className="mb-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="relative min-w-[200px] max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Cari ID / Pelapor / PIC..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+            {/* Search — dominant */}
+            <div className="relative flex-1 min-w-[220px] max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
+              <Input
+                placeholder="Cari ID / Pelapor / PIC / Lokasi…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 h-9 text-sm"
+              />
             </div>
-            <div className="flex items-center gap-1 text-muted-foreground"><Filter className="w-4 h-4" /></div>
-            <Select value={perusahaanFilter} onValueChange={setPerusahaanFilter}>
-              <SelectTrigger className="w-[150px]"><SelectValue placeholder="Perusahaan" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Perusahaan</SelectItem>
-                {uniquePerusahaan.map(p => (
-                  <SelectItem key={p} value={p}>{p}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
+            {/* Multi-select: Perusahaan */}
+            <MultiSelectDropdown
+              label="Perusahaan"
+              options={uniquePerusahaan}
+              selected={perusahaanFilter}
+              onChange={setPerusahaanFilter}
+            />
+
+            {/* Single-select: Site */}
             <Select value={siteFilter} onValueChange={setSiteFilter}>
-              <SelectTrigger className="w-[120px]"><SelectValue placeholder="Site" /></SelectTrigger>
+              <SelectTrigger className="w-auto min-w-[120px] h-9 text-sm gap-1.5">
+                <SelectValue>
+                  {siteFilter === 'all' ? 'Site: Semua' : `Site: ${siteFilter.toUpperCase()}`}
+                </SelectValue>
+              </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Site</SelectItem>
+                <SelectItem value="all">Semua</SelectItem>
                 <SelectItem value="marine">MARINE</SelectItem>
                 <SelectItem value="lmo">LMO</SelectItem>
                 <SelectItem value="gmo">GMO</SelectItem>
@@ -580,56 +587,110 @@ const AIDuplicateDetection: React.FC = () => {
                 <SelectItem value="bmo 2">BMO 2</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={lokasiFilter} onValueChange={setLokasiFilter}>
-              <SelectTrigger className="w-[150px]"><SelectValue placeholder="Lokasi" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Lokasi</SelectItem>
-                {uniqueLokasi.map(l => (
-                  <SelectItem key={l} value={l}>{l}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={detailLokasiFilter} onValueChange={setDetailLokasiFilter}>
-              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Detail Lokasi" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Detail Lokasi</SelectItem>
-                {uniqueDetailLokasi.map(d => (
-                  <SelectItem key={d} value={d}>{d}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
+            {/* Multi-select: Lokasi */}
+            <MultiSelectDropdown
+              label="Lokasi"
+              options={uniqueLokasi}
+              selected={lokasiFilter}
+              onChange={setLokasiFilter}
+            />
+
+            {/* Multi-select: Detail Lokasi */}
+            <MultiSelectDropdown
+              label="Detail Lokasi"
+              options={uniqueDetailLokasi}
+              selected={detailLokasiFilter}
+              onChange={setDetailLokasiFilter}
+            />
+
+            {/* Single-select: Status */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectTrigger className="w-auto min-w-[130px] h-9 text-sm gap-1.5">
+                <SelectValue>
+                  {statusFilter === 'all' ? 'Status: Semua' : `Status: ${statusDisplayConfig[statusFilter as QueueItemStatus]?.label || statusFilter}`}
+                </SelectValue>
+              </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Status</SelectItem>
+                <SelectItem value="all">Semua</SelectItem>
                 <SelectItem value="menunggu">Menunggu</SelectItem>
                 <SelectItem value="diproses">Diproses</SelectItem>
                 <SelectItem value="sukses">Berhasil</SelectItem>
                 <SelectItem value="gagal">Gagal</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Single-select: Batch */}
             <Select value={batchFilter} onValueChange={setBatchFilter}>
-              <SelectTrigger className="w-[220px]"><SelectValue placeholder="Batch" /></SelectTrigger>
+              <SelectTrigger className="w-auto min-w-[140px] h-9 text-sm gap-1.5">
+                <SelectValue>
+                  {batchFilter === 'all' ? 'Batch: Semua' : `Batch: ${batchDropdownOptions.find(o => o.value === batchFilter)?.label || batchFilter}`}
+                </SelectValue>
+              </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Batch</SelectItem>
+                <SelectItem value="all">Semua</SelectItem>
                 {batchDropdownOptions.map(opt => (
                   <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <div className="ml-auto">
-              <Button
-                variant={errorMode ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setErrorMode(prev => !prev)}
-                className="gap-1.5 text-xs"
-              >
-                {errorMode ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-                Error Saja
-              </Button>
-            </div>
+
+            {/* Error Toggle */}
+            <button
+              onClick={() => setErrorMode(prev => !prev)}
+              className={`ml-auto inline-flex items-center gap-2 h-9 px-3 rounded-md border text-sm font-medium transition-all whitespace-nowrap ${
+                errorMode
+                  ? 'bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/15'
+                  : 'bg-background text-muted-foreground border-input hover:bg-muted/50 hover:text-foreground'
+              }`}
+            >
+              <span className={`w-7 h-4 rounded-full relative transition-colors ${errorMode ? 'bg-destructive' : 'bg-muted-foreground/30'}`}>
+                <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-transform ${errorMode ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+              </span>
+              Error Saja
+            </button>
           </div>
         </div>
+
+        {/* Active Filter Chips */}
+        {(() => {
+          const activeFilters: { key: string; label: string; onClear: () => void }[] = [];
+          if (perusahaanFilter.length > 0) activeFilters.push({ key: 'perusahaan', label: `Perusahaan: ${perusahaanFilter.length} dipilih`, onClear: () => setPerusahaanFilter([]) });
+          if (siteFilter !== 'all') activeFilters.push({ key: 'site', label: `Site: ${siteFilter.toUpperCase()}`, onClear: () => setSiteFilter('all') });
+          if (lokasiFilter.length > 0) activeFilters.push({ key: 'lokasi', label: `Lokasi: ${lokasiFilter.length} dipilih`, onClear: () => setLokasiFilter([]) });
+          if (detailLokasiFilter.length > 0) activeFilters.push({ key: 'detail', label: `Detail Lokasi: ${detailLokasiFilter.length} dipilih`, onClear: () => setDetailLokasiFilter([]) });
+          if (statusFilter !== 'all') activeFilters.push({ key: 'status', label: `Status: ${statusDisplayConfig[statusFilter as QueueItemStatus]?.label || statusFilter}`, onClear: () => setStatusFilter('all') });
+          if (batchFilter !== 'all') {
+            const bOpt = batchDropdownOptions.find(o => o.value === batchFilter);
+            activeFilters.push({ key: 'batch', label: `Batch: ${bOpt?.label || batchFilter}`, onClear: () => setBatchFilter('all') });
+          }
+          if (errorMode) activeFilters.push({ key: 'error', label: 'Mode: Error Saja', onClear: () => setErrorMode(false) });
+          if (searchQuery) activeFilters.push({ key: 'search', label: `Pencarian: "${searchQuery}"`, onClear: () => setSearchQuery('') });
+
+          if (activeFilters.length === 0) return null;
+
+          const resetAll = () => {
+            setPerusahaanFilter([]); setSiteFilter('all'); setLokasiFilter([]); setDetailLokasiFilter([]);
+            setStatusFilter('all'); setBatchFilter('all'); setErrorMode(false); setSearchQuery('');
+          };
+
+          return (
+            <div className="mb-3 flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mr-1">Filter aktif</span>
+              {activeFilters.map(f => (
+                <span key={f.key} className="inline-flex items-center gap-1 h-6 pl-2.5 pr-1 rounded-full bg-muted/80 border border-border/60 text-xs text-foreground">
+                  {f.label}
+                  <button onClick={f.onClear} className="ml-0.5 p-0.5 rounded-full hover:bg-foreground/10 transition-colors">
+                    <X className="w-3 h-3 text-muted-foreground" />
+                  </button>
+                </span>
+              ))}
+              <button onClick={resetAll} className="ml-1 text-xs text-primary hover:text-primary/80 font-medium transition-colors">
+                Reset Filter ({activeFilters.length})
+              </button>
+            </div>
+          );
+        })()}
 
         {/* Bulk Action Bar */}
         {errorMode && someSelected && (
