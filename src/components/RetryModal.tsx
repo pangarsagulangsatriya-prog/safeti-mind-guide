@@ -47,13 +47,11 @@ const RetryModal: React.FC<RetryModalProps> = ({ open, onOpenChange, items, mode
   const [reasonCode, setReasonCode] = useState('');
   const [reasonNote, setReasonNote] = useState('');
 
-  const eligibleStatuses: QueueItemStatus[] = ['gagal', 'stuck', 'butuh_pengecekan'];
+  const eligibleStatuses: QueueItemStatus[] = ['gagal'];
   const eligible = items.filter(i => eligibleStatuses.includes(i.status));
   const skipped = items.filter(i => !eligibleStatuses.includes(i.status));
 
   const failedCount = items.filter(i => i.status === 'gagal').length;
-  const stuckCount = items.filter(i => i.status === 'stuck').length;
-  const needsCheckCount = items.filter(i => i.status === 'butuh_pengecekan').length;
 
   const handleSubmit = () => {
     if (!reasonCode) return;
@@ -94,16 +92,6 @@ const RetryModal: React.FC<RetryModalProps> = ({ open, onOpenChange, items, mode
               {failedCount > 0 && (
                 <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">
                   Gagal: {failedCount}
-                </Badge>
-              )}
-              {stuckCount > 0 && (
-                <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">
-                  Tersangkut: {stuckCount}
-                </Badge>
-              )}
-              {needsCheckCount > 0 && (
-                <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30">
-                  Butuh Pengecekan: {needsCheckCount}
                 </Badge>
               )}
               {skipped.length > 0 && (

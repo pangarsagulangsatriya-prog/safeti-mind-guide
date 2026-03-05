@@ -1,6 +1,6 @@
 // Queue Monitor Data Model with retry mechanism support
 
-export type QueueItemStatus = 'menunggu' | 'diproses' | 'sukses' | 'gagal' | 'butuh_pengecekan' | 'retrying' | 'stuck';
+export type QueueItemStatus = 'menunggu' | 'diproses' | 'sukses' | 'gagal';
 
 export interface QueueItem {
   id: string;
@@ -103,30 +103,6 @@ export const statusDisplayConfig: Record<QueueItemStatus, {
     description: 'Retry tersedia',
     retryEligible: true,
   },
-  butuh_pengecekan: {
-    label: 'Butuh Pengecekan',
-    color: 'text-warning',
-    bgColor: 'bg-warning/10',
-    borderColor: 'border-warning/30',
-    description: 'Error non-transient / data invalid',
-    retryEligible: true,
-  },
-  retrying: {
-    label: 'Retrying',
-    color: 'text-info',
-    bgColor: 'bg-info/10',
-    borderColor: 'border-info/30',
-    description: 'Sedang diulangi',
-    retryEligible: false,
-  },
-  stuck: {
-    label: 'Tersangkut',
-    color: 'text-destructive',
-    bgColor: 'bg-destructive/10',
-    borderColor: 'border-destructive/30',
-    description: 'Processing > 15 menit',
-    retryEligible: true,
-  },
 };
 
 // Mock queue items
@@ -210,7 +186,7 @@ export const mockQueueItems: QueueItem[] = [
     site: 'BMO 2',
     lokasi: '(B8) Pit J',
     geoCheck: true, textCheck: false, semanticCheck: false,
-    status: 'stuck',
+    status: 'gagal',
     duplicateScore: 50,
     duplicateStatus: null,
     attempt_count: 1,
@@ -228,7 +204,7 @@ export const mockQueueItems: QueueItem[] = [
     site: 'MARINE',
     lokasi: 'Towing Tug',
     geoCheck: true, textCheck: true, semanticCheck: true,
-    status: 'butuh_pengecekan',
+    status: 'gagal',
     duplicateScore: 40,
     duplicateStatus: null,
     attempt_count: 3,
@@ -246,7 +222,7 @@ export const mockQueueItems: QueueItem[] = [
     site: 'GMO',
     lokasi: 'Pit 3 Section A',
     geoCheck: true, textCheck: true, semanticCheck: true,
-    status: 'retrying',
+    status: 'diproses',
     duplicateScore: 30,
     duplicateStatus: null,
     attempt_count: 2,
