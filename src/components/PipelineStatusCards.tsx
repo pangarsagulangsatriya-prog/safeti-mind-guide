@@ -17,28 +17,28 @@ interface StatusCardProps {
 const statusConfig = {
   menunggu: {
     label: 'Menunggu',
-    subtitle: 'Belum masuk proses',
+    subtitle: 'Menunggu',
     tooltip: 'Laporan sudah masuk antrian dan menunggu eksekusi tahap berikutnya.',
     icon: Clock,
     filterValue: 'menunggu',
   },
   diproses: {
     label: 'Diproses',
-    subtitle: 'Sedang berjalan',
+    subtitle: 'Diproses',
     tooltip: 'Laporan sedang diproses oleh AI engine pada tahap ini.',
     icon: Loader2,
     filterValue: 'diproses',
   },
   berhasil: {
     label: 'Berhasil',
-    subtitle: 'Siap dievaluasi',
+    subtitle: 'Berhasil',
     tooltip: 'Pemrosesan selesai dan hasil siap masuk tahap berikutnya / siap dievaluasi.',
     icon: CheckCircle2,
     filterValue: 'sukses',
   },
   gagal: {
     label: 'Gagal',
-    subtitle: 'Butuh pengecekan',
+    subtitle: 'Gagal',
     tooltip: 'Proses gagal. Silakan cek log atau lakukan tindakan perbaikan.',
     icon: AlertCircle,
     filterValue: 'gagal',
