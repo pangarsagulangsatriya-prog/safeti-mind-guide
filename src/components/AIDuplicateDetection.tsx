@@ -388,11 +388,8 @@ const AIDuplicateDetection: React.FC = () => {
               <TableHead className={`${headerCellClass} min-w-[120px]`}>
                 <span className="inline-flex items-center gap-1 group cursor-default">Pelapor <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-40 transition-opacity" /></span>
               </TableHead>
-              <TableHead className={`${headerCellClass} min-w-[130px]`}>
-                <span className="inline-flex items-center gap-1 group cursor-default">Perusahaan <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-40 transition-opacity" /></span>
-              </TableHead>
-              <TableHead className={`${headerCellClass} min-w-[120px]`}>
-                <span className="inline-flex items-center gap-1 group cursor-default">PIC <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-40 transition-opacity" /></span>
+              <TableHead className={`${headerCellClass} min-w-[160px]`}>
+                <span className="inline-flex items-center gap-1 group cursor-default">PIC / Perusahaan <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-40 transition-opacity" /></span>
               </TableHead>
               <TableHead className={`${headerCellClass} min-w-[70px]`}>
                 <span className="inline-flex items-center gap-1 group cursor-default">Site <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-40 transition-opacity" /></span>
@@ -410,7 +407,7 @@ const AIDuplicateDetection: React.FC = () => {
           <TableBody>
             {paginatedItems.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={errorMode ? 11 : 10} className="text-center py-16">
+                <TableCell colSpan={errorMode ? 10 : 9} className="text-center py-16">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
                       <Search className="w-5 h-5 text-muted-foreground/40" />
@@ -458,11 +455,21 @@ const AIDuplicateDetection: React.FC = () => {
                   <TableCell className={`${cellClass} font-mono text-xs font-semibold text-foreground`}>{item.id}</TableCell>
                   <TableCell className={`${cellClass} text-muted-foreground whitespace-nowrap text-xs`}>{item.timestamp}</TableCell>
                   <TableCell className={`${cellClass} font-medium text-foreground text-xs`}>{item.pelapor}</TableCell>
-                  <TableCell className={`${cellClass} text-muted-foreground text-xs`}>
-                    <TruncatedCell text={item.perusahaan} maxW="max-w-[130px]" />
-                  </TableCell>
-                  <TableCell className={`${cellClass} text-muted-foreground text-xs`}>
-                    <TruncatedCell text={item.pic_perusahaan} maxW="max-w-[120px]" />
+                  <TableCell className={`${cellClass} text-xs`}>
+                    <TooltipProvider delayDuration={300}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="max-w-[160px]">
+                            <span className="block truncate font-medium text-foreground leading-tight">{item.perusahaan}</span>
+                            <span className="block truncate text-muted-foreground text-[11px] leading-tight">{item.pic_perusahaan}</span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[300px] text-xs">
+                          <p className="font-medium">{item.perusahaan}</p>
+                          <p className="text-muted-foreground">{item.pic_perusahaan}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </TableCell>
                   <TableCell className={`${cellClass} text-muted-foreground text-xs font-medium`}>{item.site}</TableCell>
                   <TableCell className={`${cellClass} text-muted-foreground text-xs`}>
